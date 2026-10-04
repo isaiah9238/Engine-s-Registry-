@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Deny All Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Bootstrapped Admin check
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'isaiah9238@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidSkill(data) {
+      return data.keys().hasAll(['id', 'name', 'title', 'description', 'authorId', 'status', 'skillMarkdown'])
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100 && data.name.matches('^[a-z0-9-_]+$')
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 4000
+        && data.authorId is string && data.authorId.size() <= 128
+        && data.status in ['draft', 'verified', 'published', 'archived']
+        && data.skillMarkdown is string && data.skillMarkdown.size() <= 200000;
+    }
+
+    // Skills Collection
+    match /skills/{skillId} {
+      // Any authenticated user or public viewer can read published/public skills
+      allow get: if isValidId(skillId) && (
+        (resource != null && (resource.data.isPublic == true || (isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()))))
+      );
+      
+      // List query security
+      allow list: if isSignedIn();
+
+      // Create rule
+      allow create: if isSignedIn()
+        && isValidId(skillId)
+        && incoming().id == skillId
+        && incoming().authorId == request.auth.uid
+        && isValidSkill(incoming());
+
+      // Update rule with immutability of authorId & createdAt
+      allow update: if isSignedIn()
+        && isValidId(skillId)
+        && (isAdmin() || (existing().authorId == request.auth.uid && incoming().authorId == existing().authorId))
+        && incoming().createdAt == existing().createdAt
+        && isValidSkill(incoming());
+
+      // Delete rule
+      allow delete: if isSignedIn()
+        && isValidId(skillId)
+        && (isAdmin() || existing().authorId == request.auth.uid);
+    }
+
+    // User Public Profile Split Collection
+    match /users/{userId}/public/profile {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+  }
+}
