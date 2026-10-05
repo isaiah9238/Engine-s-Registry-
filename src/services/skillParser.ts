@@ -73,8 +73,19 @@ export function parseSkillMarkdown(markdown: string, fallbackAuthorId = 'system'
     errors.push("Skill description is missing in frontmatter and body.");
   }
 
-  const category = frontmatterObj.category || 'General';
+  const category = frontmatterObj.category || 'orchestration';
   const version = frontmatterObj.version || '1.0.0';
+  const securityClearance = frontmatterObj.securityClearance || 'public';
+  const isExecutable = frontmatterObj.isExecutable !== undefined ? Boolean(frontmatterObj.isExecutable) : true;
+  const runtime = frontmatterObj.runtime || 'in_process';
+  const sourceReferences = Array.isArray(frontmatterObj.sourceReferences)
+    ? frontmatterObj.sourceReferences.map(String)
+    : frontmatterObj.sourceReferences
+    ? [String(frontmatterObj.sourceReferences)]
+    : [];
+  const returns = typeof frontmatterObj.returns === 'object'
+    ? JSON.stringify(frontmatterObj.returns, null, 2)
+    : frontmatterObj.returns || '{\n  "type": "object",\n  "description": "Standard execution response"\n}';
 
   // 3. Extract Parameters
   const parameters: SkillParameter[] = [];
@@ -188,6 +199,13 @@ export function parseSkillMarkdown(markdown: string, fallbackAuthorId = 'system'
   }
 
   // 8. Build Ingestion Summary JSON
+  let returnsSchemaObj: Record<string, any> | undefined = undefined;
+  try {
+    returnsSchemaObj = JSON.parse(returns);
+  } catch {
+    // keep undefined
+  }
+
   const summaryJson: IngestionSummaryJson = {
     schemaVersion: '2026.1',
     skillId: name,
@@ -196,6 +214,9 @@ export function parseSkillMarkdown(markdown: string, fallbackAuthorId = 'system'
     description: description.slice(0, 1500),
     category,
     version,
+    runtime,
+    isExecutable,
+    securityClearance,
     triggerPreconditions: extractBullets(extractSection(bodyMarkdown, ['Preconditions', 'Triggers', 'When to use', 'Requirements'])),
     routingKeywords: extractKeywords(title + ' ' + description + ' ' + (frontmatterObj.tags || []).join(' ')),
     parametersSchema: {
@@ -210,6 +231,7 @@ export function parseSkillMarkdown(markdown: string, fallbackAuthorId = 'system'
       }, {} as Record<string, any>),
       required: parameters.filter((p) => p.required).map((p) => p.name),
     },
+    returnsSchema: returnsSchemaObj,
     dependencies: {
       npm: dependencies.filter((d) => !d.startsWith('python:') && !d.startsWith('oauth:')),
       python: dependencies.filter((d) => d.startsWith('python:')).map((d) => d.replace('python:', '')),
@@ -234,6 +256,11 @@ export function parseSkillMarkdown(markdown: string, fallbackAuthorId = 'system'
     description,
     category,
     version,
+    securityClearance,
+    isExecutable,
+    runtime,
+    returns,
+    sourceReferences,
     authorId: fallbackAuthorId,
     authorEmail: 'agent-engine@system.internal',
     skillMarkdown: markdown,
@@ -244,7 +271,7 @@ export function parseSkillMarkdown(markdown: string, fallbackAuthorId = 'system'
     dependencies: JSON.stringify(dependencies, null, 2),
     codeFiles: JSON.stringify(codeFiles, null, 2),
     status: errors.length === 0 ? 'verified' : 'draft',
-    isPublic: true,
+    isPublic: securityClearance !== 'admin-only',
   };
 
   return {
@@ -335,11 +362,27 @@ export function generateSkillMarkdown(skill: Partial<SkillRecord>): string {
     console.error('Error parsing JSON fields for markdown generation', e);
   }
 
-  const frontmatter = {
+  let returnsObj: any = undefined;
+  if (skill.returns) {
+    try {
+      returnsObj = JSON.parse(skill.returns);
+    } catch {
+      returnsObj = skill.returns;
+    }
+  }
+
+  const frontmatter: Record<string, any> = {
     name: skill.name || 'unnamed-skill',
     version: skill.version || '1.0.0',
-    category: skill.category || 'General',
+    category: skill.category || 'orchestration',
     description: skill.description || '',
+    securityClearance: skill.securityClearance || 'public',
+    isExecutable: skill.isExecutable ?? true,
+    runtime: skill.runtime || 'in_process',
+    ...(skill.sourceReferences && skill.sourceReferences.length > 0
+      ? { sourceReferences: skill.sourceReferences }
+      : {}),
+    ...(returnsObj ? { returns: returnsObj } : {}),
     dependencies: dependencies,
   };
 

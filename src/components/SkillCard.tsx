@@ -47,24 +47,40 @@ export const SkillCard: React.FC<SkillCardProps> = ({
   }
 
   const categoryColors: Record<string, string> = {
-    'Meta-Engineering': 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800',
-    'Thermodynamics & Hardware': 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-    'Orchestration': 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-    'Integrations & Workspace': 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    'security-audit': 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+    'orchestration': 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+    'workflow-automation': 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    'math-geometry': 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+    'system-tool': 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
+    'meta-engineering': 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800',
   };
 
   const badgeClass =
     categoryColors[skill.category] ||
     'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
 
+  const clearanceClass =
+    skill.securityClearance === 'admin-only'
+      ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-400 border-rose-300'
+      : skill.securityClearance === 'internal'
+      ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/80 dark:text-amber-400 border-amber-300'
+      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+
   return (
     <div className="group relative flex flex-col justify-between bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-2xl p-5 shadow-xs hover:shadow-lg transition-all duration-200">
       <div>
         {/* Top Badges */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${badgeClass}`}>
-            {skill.category}
-          </span>
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${badgeClass}`}>
+              {skill.category}
+            </span>
+            {skill.securityClearance && (
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border uppercase ${clearanceClass}`}>
+                {skill.securityClearance}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
               v{skill.version}
@@ -80,6 +96,26 @@ export const SkillCard: React.FC<SkillCardProps> = ({
               {skill.status}
             </span>
           </div>
+        </div>
+
+        {/* Runtime & Executable pill */}
+        <div className="flex items-center gap-2 mb-2">
+          {skill.isExecutable ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Executable Tool ({skill.runtime?.toUpperCase() || 'IN_PROCESS'})
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+              Knowledge Protocol
+            </span>
+          )}
+          {skill.sourceReferences && skill.sourceReferences.length > 0 && (
+            <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-mono">
+              • Notebook Linked
+            </span>
+          )}
         </div>
 
         {/* Skill Title & Slug */}

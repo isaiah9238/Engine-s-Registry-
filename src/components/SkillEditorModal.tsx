@@ -53,8 +53,13 @@ export const SkillEditorModal: React.FC<SkillEditorModalProps> = ({
   const [name, setName] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Meta-Engineering');
+  const [category, setCategory] = useState<string>('orchestration');
   const [version, setVersion] = useState('1.0.0');
+  const [securityClearance, setSecurityClearance] = useState<'public' | 'internal' | 'admin-only'>('public');
+  const [isExecutable, setIsExecutable] = useState(true);
+  const [runtime, setRuntime] = useState<'mcp' | 'in_process' | 'cloud_function'>('in_process');
+  const [sourceReferencesStr, setSourceReferencesStr] = useState('');
+  const [returnsSchemaStr, setReturnsSchemaStr] = useState('{\n  "type": "object",\n  "description": "Standard execution payload"\n}');
   const [parameters, setParameters] = useState<SkillParameter[]>([]);
   const [examples, setExamples] = useState<SkillExample[]>([]);
   const [references, setReferences] = useState<SkillReference[]>([]);
@@ -68,6 +73,11 @@ export const SkillEditorModal: React.FC<SkillEditorModalProps> = ({
       setDescription(initialSkill.description);
       setCategory(initialSkill.category);
       setVersion(initialSkill.version);
+      if (initialSkill.securityClearance) setSecurityClearance(initialSkill.securityClearance);
+      if (initialSkill.isExecutable !== undefined) setIsExecutable(initialSkill.isExecutable);
+      if (initialSkill.runtime) setRuntime(initialSkill.runtime);
+      if (initialSkill.sourceReferences) setSourceReferencesStr(initialSkill.sourceReferences.join('\n'));
+      if (initialSkill.returns) setReturnsSchemaStr(initialSkill.returns);
 
       try {
         if (initialSkill.parameters) setParameters(JSON.parse(initialSkill.parameters));
@@ -83,7 +93,12 @@ export const SkillEditorModal: React.FC<SkillEditorModalProps> = ({
 name: custom-agent-skill
 title: Custom Agent Capability
 version: 1.0.0
-category: Meta-Engineering
+category: orchestration
+securityClearance: public
+isExecutable: true
+runtime: in_process
+sourceReferences:
+  - "notebook://studio-alchemist/custom-skill.ipynb"
 description: Detailed operational capabilities and execution boundary.
 dependencies: ["lucide-react"]
 priority: 1
@@ -115,6 +130,10 @@ Describe what this skill executes, its preconditions, and output quality standar
       setName(parsed.skill.name || 'custom-agent-skill');
       setTitle(parsed.skill.title || 'Custom Agent Capability');
       setDescription(parsed.skill.description || '');
+      setCategory('orchestration');
+      setSecurityClearance('public');
+      setIsExecutable(true);
+      setRuntime('in_process');
     }
   }, [initialSkill, currentUserId]);
 
@@ -136,6 +155,11 @@ Describe what this skill executes, its preconditions, and output quality standar
       description,
       category,
       version,
+      securityClearance,
+      isExecutable,
+      runtime,
+      sourceReferences: sourceReferencesStr.split('\n').map((s) => s.trim()).filter(Boolean),
+      returns: returnsSchemaStr,
       parameters: JSON.stringify(parameters),
       examples: JSON.stringify(examples),
       references: JSON.stringify(references),
@@ -154,6 +178,11 @@ Describe what this skill executes, its preconditions, and output quality standar
     if (result.skill.description) setDescription(result.skill.description);
     if (result.skill.category) setCategory(result.skill.category);
     if (result.skill.version) setVersion(result.skill.version);
+    if (result.skill.securityClearance) setSecurityClearance(result.skill.securityClearance);
+    if (result.skill.isExecutable !== undefined) setIsExecutable(result.skill.isExecutable);
+    if (result.skill.runtime) setRuntime(result.skill.runtime);
+    if (result.skill.sourceReferences) setSourceReferencesStr(result.skill.sourceReferences.join('\n'));
+    if (result.skill.returns) setReturnsSchemaStr(result.skill.returns);
 
     try {
       if (result.skill.parameters) setParameters(JSON.parse(result.skill.parameters));
@@ -204,8 +233,13 @@ Describe what this skill executes, its preconditions, and output quality standar
           name: parsed.skill.name || 'unnamed-skill',
           title: parsed.skill.title || 'Untitled Skill',
           description: parsed.skill.description || '',
-          category: parsed.skill.category || 'General',
+          category: parsed.skill.category || 'orchestration',
           version: parsed.skill.version || '1.0.0',
+          securityClearance: parsed.skill.securityClearance || 'public',
+          isExecutable: parsed.skill.isExecutable ?? true,
+          runtime: parsed.skill.runtime || 'in_process',
+          returns: parsed.skill.returns || returnsSchemaStr,
+          sourceReferences: parsed.skill.sourceReferences || [],
           authorId: initialSkill?.authorId || currentUserId,
           authorEmail: initialSkill?.authorEmail || currentUserEmail || 'isaiah9238@gmail.com',
           skillMarkdown: rawMarkdown,
@@ -216,17 +250,23 @@ Describe what this skill executes, its preconditions, and output quality standar
           dependencies: parsed.skill.dependencies || '[]',
           codeFiles: parsed.skill.codeFiles || '{}',
           status: parsed.isValid ? 'verified' : 'draft',
-          isPublic: true,
+          isPublic: (parsed.skill.securityClearance || 'public') !== 'admin-only',
           createdAt: initialSkill?.createdAt || now,
           updatedAt: now,
         };
       } else {
+        const srcRefs = sourceReferencesStr.split('\n').map((s) => s.trim()).filter(Boolean);
         const syntheticSkill: Partial<SkillRecord> = {
           name,
           title,
           description,
           category,
           version,
+          securityClearance,
+          isExecutable,
+          runtime,
+          sourceReferences: srcRefs,
+          returns: returnsSchemaStr,
           parameters: JSON.stringify(parameters),
           examples: JSON.stringify(examples),
           references: JSON.stringify(references),
@@ -243,6 +283,11 @@ Describe what this skill executes, its preconditions, and output quality standar
           description,
           category,
           version,
+          securityClearance,
+          isExecutable,
+          runtime,
+          returns: returnsSchemaStr,
+          sourceReferences: srcRefs,
           authorId: initialSkill?.authorId || currentUserId,
           authorEmail: initialSkill?.authorEmail || currentUserEmail || 'isaiah9238@gmail.com',
           skillMarkdown: md,
@@ -253,7 +298,7 @@ Describe what this skill executes, its preconditions, and output quality standar
           dependencies: JSON.stringify(['@types/node'], null, 2),
           codeFiles: JSON.stringify(codeFiles, null, 2),
           status: 'verified',
-          isPublic: true,
+          isPublic: securityClearance !== 'admin-only',
           createdAt: initialSkill?.createdAt || now,
           updatedAt: now,
         };
@@ -396,22 +441,50 @@ Describe what this skill executes, its preconditions, and output quality standar
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    Category
+                    Category (Notebook Domain)
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg"
                   >
-                    <option value="Meta-Engineering">Meta-Engineering</option>
-                    <option value="Thermodynamics & Hardware">Thermodynamics & Hardware</option>
-                    <option value="Orchestration">Orchestration</option>
-                    <option value="Integrations & Workspace">Integrations & Workspace</option>
-                    <option value="Data & Analytics">Data & Analytics</option>
-                    <option value="Security & Auditing">Security & Auditing</option>
+                    <option value="security-audit">security-audit</option>
+                    <option value="orchestration">orchestration</option>
+                    <option value="workflow-automation">workflow-automation</option>
+                    <option value="math-geometry">math-geometry</option>
+                    <option value="system-tool">system-tool</option>
+                    <option value="meta-engineering">meta-engineering</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Target Runtime
+                  </label>
+                  <select
+                    value={runtime}
+                    onChange={(e) => setRuntime(e.target.value as any)}
+                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg"
+                  >
+                    <option value="in_process">in_process (Local Worker)</option>
+                    <option value="mcp">mcp (Model Context Protocol)</option>
+                    <option value="cloud_function">cloud_function (Serverless API)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    ABAC Security Clearance
+                  </label>
+                  <select
+                    value={securityClearance}
+                    onChange={(e) => setSecurityClearance(e.target.value as any)}
+                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg"
+                  >
+                    <option value="public">public (Open Access)</option>
+                    <option value="internal">internal (Signed-in Users)</option>
+                    <option value="admin-only">admin-only (Admins Only)</option>
                   </select>
                 </div>
                 <div>
@@ -424,6 +497,55 @@ Describe what this skill executes, its preconditions, and output quality standar
                     onChange={(e) => setVersion(e.target.value)}
                     placeholder="1.0.0"
                     className="w-full px-3 py-2 text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              {/* Executable Toggle */}
+              <div className="p-3 bg-slate-100/60 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    Active Runtime Tool Execution (isExecutable)
+                  </span>
+                  <span className="text-[11px] text-slate-500 block">
+                    Enable tool call invocation bindings for active agent execution engines.
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isExecutable}
+                    onChange={(e) => setIsExecutable(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+
+              {/* Source References & Return Schema */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Studio Alchemist Notebook Sources (sourceReferences, 1 per line)
+                  </label>
+                  <textarea
+                    value={sourceReferencesStr}
+                    onChange={(e) => setSourceReferencesStr(e.target.value)}
+                    rows={3}
+                    placeholder="notebook://studio-alchemist/domain.ipynb&#10;https://docs.alchemist.ai/spec-1"
+                    className="w-full px-3 py-2 text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Output Return Schema (returns JSON Schema)
+                  </label>
+                  <textarea
+                    value={returnsSchemaStr}
+                    onChange={(e) => setReturnsSchemaStr(e.target.value)}
+                    rows={3}
+                    placeholder='{"type": "object", "properties": {"result": {"type": "string"}}}'
+                    className="w-full px-3 py-2 text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>

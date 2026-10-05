@@ -1,31 +1,210 @@
 /**
  * Seed Skills for the Agent Engine Skill Registry
- * Built according to the SKILL.md specification and ingestion pipeline standard.
+ * Built according to the Studio Alchemist AI Agent Skill and Workflow Registry schema.
  */
 import type { SkillRecord } from '../types/skill';
+import { generateDeterministicVector768 } from '../services/vectorSearch';
+import { WRITE_SKILL_VECTOR_768 } from './writeSkillVector';
 
-export const SEED_SKILLS: SkillRecord[] = [
+export const RAW_SEED_SKILLS: SkillRecord[] = [
+  {
+    id: 'auth-vault-eval',
+    name: 'auth_vault_eval',
+    title: 'Cryptographic Vault Evaluator',
+    description: 'Zero-trust cryptographic key vault auditor and ABAC security inspector for agent runtime workloads. Evaluates encryption at rest, rotates ephemeral keys, and tests ABAC policies against the 8 pillars of hardened access.',
+    category: 'security-audit',
+    version: '1.0.0',
+    authorId: 'system-agent-engine',
+    authorEmail: 'isaiah9238@gmail.com',
+    status: 'verified',
+    isPublic: true,
+    securityClearance: 'internal',
+    isExecutable: true,
+    runtime: 'mcp',
+    sourceReferences: [
+      'notebook://studio-alchemist/security-vault-audit.ipynb',
+      'https://csrc.nist.gov/publications/detail/sp/800-57-part-1/rev-5/final'
+    ],
+    returns: JSON.stringify({
+      type: 'object',
+      properties: {
+        vaultAuditScore: { type: 'number', description: 'Composite cryptographic security score (0-100).' },
+        abacCompliance: { type: 'boolean', description: 'Whether the vault passes strict ABAC boundaries.' },
+        vulnerabilities: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Identified shadow keys, expired certificates, or update gaps.'
+        },
+        remediationPlan: { type: 'string', description: 'Recommended key rotation or policy fix steps.' }
+      },
+      required: ['vaultAuditScore', 'abacCompliance', 'vulnerabilities']
+    }, null, 2),
+    createdAt: new Date('2026-10-04T00:00:00Z').toISOString(),
+    updatedAt: new Date('2026-10-04T07:50:00Z').toISOString(),
+    skillMarkdown: `---
+name: auth_vault_eval
+title: Cryptographic Vault Evaluator
+version: 1.0.0
+category: security-audit
+securityClearance: internal
+isExecutable: true
+runtime: mcp
+sourceReferences:
+  - "notebook://studio-alchemist/security-vault-audit.ipynb"
+  - "https://csrc.nist.gov/publications/detail/sp/800-57-part-1/rev-5/final"
+description: |
+  Zero-trust cryptographic key vault auditor and ABAC security inspector for agent runtime workloads.
+  Evaluates encryption at rest, rotates ephemeral keys, and tests ABAC policies.
+dependencies: ["crypto", "@types/node", "lucide-react"]
+priority: 1
+thermodynamicFootprint: low
+---
+
+# Cryptographic Vault Evaluator
+
+## Description & Mission
+Audits secrets storage vaults, ephemeral runtime tokens, and role-based permissions to prevent privilege escalation and unauthorized key leakage in multi-agent environments.
+
+## Parameters & Invocation Schemas
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| \`vaultEndpoint\` | \`string\` | true | URI or reference key for the target secret store. |
+| \`auditLevel\` | \`string\` | true | Inspection depth: \`surface\`, \`deep-audit\`, or \`penetration-test\`. |
+| \`enforceZeroTrust\` | \`boolean\` | false | Flag to verify attribute-based separation of keys. |
+
+## Operational Rules & Preconditions
+- Execute only within authorized runtime boundaries using the MCP protocol.
+- Flag any hardcoded API secrets or unrotated certificates older than 90 days.
+- Return structured evaluation reports conforming to the Studio Alchemist telemetry standard.
+
+## In-Context Examples & Multi-Turn Walkthroughs
+
+### Example 1: Full Cryptographic Vault Audit
+**Prompt**: "Audit the production secrets store and check for unrotated tokens."
+**Expected Outcome**: Returns a \`vaultAuditScore\` of 94 with a clean bill of health on AES-256-GCM configurations.
+
+## Scaffolded Code & Reference Implementations
+
+### \`vault_inspector.ts\`
+\`\`\`typescript
+export interface VaultAuditResult {
+  score: number;
+  unrotatedKeysCount: number;
+  passedAbac: boolean;
+}
+
+export function evaluateVault(endpoint: string): VaultAuditResult {
+  return { score: 95, unrotatedKeysCount: 0, passedAbac: true };
+}
+\`\`\`
+`,
+    summaryJson: JSON.stringify({
+      schemaVersion: '2026.1',
+      skillId: 'auth-vault-eval',
+      name: 'auth_vault_eval',
+      title: 'Cryptographic Vault Evaluator',
+      description: 'Zero-trust cryptographic key vault auditor and ABAC security inspector for agent runtime workloads.',
+      category: 'security-audit',
+      version: '1.0.0',
+      runtime: 'mcp',
+      isExecutable: true,
+      securityClearance: 'internal',
+      triggerPreconditions: [
+        'Security audits requested on secret vaults',
+        'ABAC policy compliance validation',
+        'Key rotation checks and vulnerability scans'
+      ],
+      routingKeywords: ['vault', 'security', 'audit', 'cryptographic', 'abac', 'tokens', 'secret'],
+      parametersSchema: {
+        type: 'object',
+        properties: {
+          vaultEndpoint: { type: 'string', description: 'URI or identifier of the vault.' },
+          auditLevel: { type: 'string', enum: ['surface', 'deep-audit', 'penetration-test'], description: 'Audit rigor.' },
+          enforceZeroTrust: { type: 'boolean', description: 'Enforce zero-trust validation.' }
+        },
+        required: ['vaultEndpoint', 'auditLevel']
+      },
+      dependencies: { npm: ['crypto', 'lucide-react'] },
+      evaluationRubric: { priority: 1, thermodynamicFootprint: 'low', requiresHumanReview: true, verificationLevel: 'strict' },
+      bestSuitedFor: ['Secrets audits', 'ABAC hardening', 'Key hygiene verification'],
+      unsuitedFor: ['Unauthenticated public endpoints']
+    }, null, 2),
+    parameters: JSON.stringify([
+      { name: 'vaultEndpoint', type: 'string', required: true, description: 'URI or identifier of the secrets store.' },
+      { name: 'auditLevel', type: 'string', required: true, description: 'Inspection depth: surface | deep-audit | penetration-test.', enum: ['surface', 'deep-audit', 'penetration-test'] },
+      { name: 'enforceZeroTrust', type: 'boolean', required: false, description: 'Enforce attribute-based separation.' }
+    ], null, 2),
+    examples: JSON.stringify([
+      {
+        title: 'Full Cryptographic Vault Audit',
+        scenario: 'Periodic compliance verification of secrets manager.',
+        prompt: 'Audit the production secrets store and check for unrotated tokens.',
+        invocations: 'evaluateVault("vault://internal-secrets/prod", "deep-audit")',
+        expectedOutcome: 'Returns vaultAuditScore 95 and verifies AES-256-GCM encryption at rest.'
+      }
+    ], null, 2),
+    references: JSON.stringify([
+      { title: 'NIST SP 800-57 Key Management', url: 'https://csrc.nist.gov/publications/detail/sp/800-57-part-1/rev-5/final', type: 'spec', description: 'Recommendation for Cryptographic Key Management.' }
+    ], null, 2),
+    dependencies: JSON.stringify(['crypto', 'lucide-react'], null, 2),
+    codeFiles: JSON.stringify({
+      'vault_inspector.ts': {
+        filename: 'vault_inspector.ts',
+        language: 'typescript',
+        description: 'MCP runtime secrets auditor.',
+        content: `export function evaluateVault(endpoint: string) {\n  return { score: 95, unrotatedKeysCount: 0, passedAbac: true };\n}`
+      }
+    }, null, 2)
+  },
   {
     id: 'write-skill',
     name: 'write-skill',
     title: 'Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine',
     description: 'Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files. Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically determine which skill in the registry is best for a given job.',
-    category: 'Meta-Engineering',
+    category: 'orchestration',
     version: '1.2.0',
-    authorId: 'system-agent-engine',
-    authorEmail: 'isaiah9238@gmail.com',
-    status: 'verified',
+    authorId: 'system-architect',
+    authorEmail: 'isaiahmsmith@aihomev2.com',
+    status: 'published',
     isPublic: true,
-    createdAt: new Date('2026-10-01T00:00:00Z').toISOString(),
-    updatedAt: new Date('2026-10-04T00:00:00Z').toISOString(),
+    securityClearance: 'public',
+    isExecutable: true,
+    runtime: 'in_process',
+    sourceReferences: [
+      'notebook://studio-alchemist/meta-authoring.ipynb',
+      'https://agent-engine.internal/specs/skill-v1'
+    ],
+    bundleStoragePath: 'gs://gen-lang-client-0573899362.firebasestorage.app/skills/write-skill/',
+    bundleFiles: {
+      guidelinesMd: 'gs://gen-lang-client-0573899362.firebasestorage.app/skills/write-skill/guidelines.md',
+      runtimeScript: 'gs://gen-lang-client-0573899362.firebasestorage.app/skills/write-skill/script.js',
+      runtimeFilename: 'script.js'
+    },
+    returns: JSON.stringify({
+      type: 'object',
+      properties: {
+        skillRecord: { type: 'object', description: 'Fully parsed and validated skill manifest.' },
+        summaryJson: { type: 'string', description: 'Machine-digestible ingestion contract.' }
+      },
+      required: ['skillRecord', 'summaryJson']
+    }, null, 2),
+    createdAt: '2026-10-04T21:30:00.000Z',
+    updatedAt: '2026-10-04T21:30:00.000Z',
     skillMarkdown: `---
 name: write-skill
+title: "Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine"
 description: |
   Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files.
   Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically
   determine which skill in the registry is best for a given job.
 version: 1.2.0
-category: Meta-Engineering
+category: orchestration
+securityClearance: public
+isExecutable: true
+runtime: in_process
+sourceReferences:
+  - "notebook://studio-alchemist/meta-authoring.ipynb"
+  - "https://agent-engine.internal/specs/skill-v1"
 tags: [meta-skill, skill-authoring, decision-engine, prompt-engineering, ingestion-pipeline]
 dependencies: ["js-yaml", "@types/node", "lucide-react"]
 priority: 1
@@ -109,8 +288,11 @@ export function validateSkillStructure(manifest: Record<string, any>): { valid: 
       name: 'write-skill',
       title: 'Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine',
       description: 'Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files. Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically determine which skill in the registry is best for a given job.',
-      category: 'Meta-Engineering',
+      category: 'orchestration',
       version: '1.2.0',
+      runtime: 'in_process',
+      isExecutable: true,
+      securityClearance: 'public',
       triggerPreconditions: [
         'User requests creation of new agent skill',
         'Agent requires procedural self-improvement',
@@ -194,22 +376,44 @@ export function validateSkillStructure(manifest: Record<string, any>): { valid: 
     name: 'neuromorphic-energy-optimizer',
     title: 'Physical Cognition & Neuromorphic Thermodynamic Optimizer',
     description: 'Models compute resource constraints, Landauer dissipation limits (E = kB * T * ln(2)), von Neumann memory bus bottlenecks, and Spike-Timing-Dependent Plasticity (STDP) for high-efficiency neuromorphic architectures.',
-    category: 'Thermodynamics & Hardware',
+    category: 'math-geometry',
     version: '2.0.0',
     authorId: 'system-agent-engine',
     authorEmail: 'isaiah9238@gmail.com',
     status: 'published',
     isPublic: true,
+    securityClearance: 'public',
+    isExecutable: true,
+    runtime: 'in_process',
+    sourceReferences: [
+      'notebook://studio-alchemist/neuromorphic-thermo.ipynb',
+      'https://doi.org/10.1147/rd.53.0183'
+    ],
+    returns: JSON.stringify({
+      type: 'object',
+      properties: {
+        joules: { type: 'number', description: 'Dissipated heat in Joules.' },
+        electronVolts: { type: 'number', description: 'Dissipated heat in eV.' },
+        coolingLoadWatts: { type: 'number', description: 'Direct liquid cooling overhead.' }
+      },
+      required: ['joules', 'electronVolts']
+    }, null, 2),
     createdAt: new Date('2026-10-02T00:00:00Z').toISOString(),
-    updatedAt: new Date('2026-10-04T00:00:00Z').toISOString(),
+    updatedAt: new Date('2026-10-04T07:50:00Z').toISOString(),
     skillMarkdown: `---
 name: neuromorphic-energy-optimizer
+title: Physical Cognition & Neuromorphic Thermodynamic Optimizer
 description: |
   Models compute resource constraints, Landauer dissipation limits (E = kB * T * ln(2)),
   von Neumann memory bus bottlenecks, and Spike-Timing-Dependent Plasticity (STDP)
   for high-efficiency neuromorphic architectures.
 version: 2.0.0
-category: Thermodynamics & Hardware
+category: math-geometry
+securityClearance: public
+isExecutable: true
+runtime: in_process
+sourceReferences:
+  - "notebook://studio-alchemist/neuromorphic-thermo.ipynb"
 tags: [landauer-limit, von-neumann-wall, neuromorphic, snn, stdp, mcp-neuron, thermodynamic-ai]
 dependencies: ["mathjs", "lucide-react"]
 priority: 2
@@ -260,8 +464,11 @@ export function calculateLandauerMinimum(tempKelvin = 300, bitErasures = 1): { j
       name: 'neuromorphic-energy-optimizer',
       title: 'Physical Cognition & Neuromorphic Thermodynamic Optimizer',
       description: 'Models compute resource constraints, Landauer dissipation limits, and neuromorphic energy models.',
-      category: 'Thermodynamics & Hardware',
+      category: 'math-geometry',
       version: '2.0.0',
+      runtime: 'in_process',
+      isExecutable: true,
+      securityClearance: 'public',
       triggerPreconditions: [
         'Hardware efficiency queries',
         'Thermal dissipation or Landauer limit modeling',
@@ -323,21 +530,42 @@ export function calculateLandauerMinimum(tempKelvin = 300, bitErasures = 1): { j
     name: 'agent-task-router',
     title: 'Deterministic Task Router & Skill Selector',
     description: 'Analyzes user prompts, extracts intent vectors, queries the skill registry database, checks parameter requirements, and returns the highest-scoring skill candidate with confidence intervals.',
-    category: 'Orchestration',
+    category: 'orchestration',
     version: '1.1.0',
     authorId: 'system-agent-engine',
     authorEmail: 'isaiah9238@gmail.com',
     status: 'published',
     isPublic: true,
+    securityClearance: 'public',
+    isExecutable: true,
+    runtime: 'in_process',
+    sourceReferences: [
+      'notebook://studio-alchemist/task-dispatch-matrix.ipynb'
+    ],
+    returns: JSON.stringify({
+      type: 'object',
+      properties: {
+        routedSkillId: { type: 'string' },
+        confidenceScore: { type: 'number' },
+        reasoning: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['routedSkillId', 'confidenceScore']
+    }, null, 2),
     createdAt: new Date('2026-10-03T00:00:00Z').toISOString(),
-    updatedAt: new Date('2026-10-04T00:00:00Z').toISOString(),
+    updatedAt: new Date('2026-10-04T07:50:00Z').toISOString(),
     skillMarkdown: `---
 name: agent-task-router
+title: Deterministic Task Router & Skill Selector
 description: |
   Analyzes user prompts, extracts intent vectors, queries the skill registry database,
   checks parameter requirements, and returns the highest-scoring skill candidate with confidence intervals.
 version: 1.1.0
-category: Orchestration
+category: orchestration
+securityClearance: public
+isExecutable: true
+runtime: in_process
+sourceReferences:
+  - "notebook://studio-alchemist/task-dispatch-matrix.ipynb"
 tags: [router, dispatcher, skill-selection, arbitration, multi-agent]
 dependencies: ["lucide-react"]
 priority: 1
@@ -363,8 +591,11 @@ Decides systematically which skill is best for the job. Takes an unstructured us
       name: 'agent-task-router',
       title: 'Deterministic Task Router & Skill Selector',
       description: 'Analyzes user prompts and selects the optimal skill from the registry.',
-      category: 'Orchestration',
+      category: 'orchestration',
       version: '1.1.0',
+      runtime: 'in_process',
+      isExecutable: true,
+      securityClearance: 'public',
       triggerPreconditions: [
         'Incoming multi-faceted user request',
         'Disambiguation between multiple candidate skills'
@@ -407,22 +638,42 @@ Decides systematically which skill is best for the job. Takes an unstructured us
     name: 'workspace-skill-sync',
     title: 'Google Workspace Cloud Registry Bridge (Drive & Gmail)',
     description: 'Provides bi-directional synchronization between the local Agent Engine database and Google Drive (for backup, archival, and sharing of SKILL.md bundles) and Gmail (for ingestion digests and team distribution).',
-    category: 'Integrations & Workspace',
+    category: 'workflow-automation',
     version: '1.0.0',
     authorId: 'system-agent-engine',
     authorEmail: 'isaiah9238@gmail.com',
     status: 'verified',
     isPublic: true,
+    securityClearance: 'internal',
+    isExecutable: true,
+    runtime: 'cloud_function',
+    sourceReferences: [
+      'notebook://studio-alchemist/workspace-bridge.ipynb'
+    ],
+    returns: JSON.stringify({
+      type: 'object',
+      properties: {
+        syncStatus: { type: 'string', enum: ['synced', 'failed'] },
+        cloudFileId: { type: 'string' }
+      },
+      required: ['syncStatus']
+    }, null, 2),
     createdAt: new Date('2026-10-04T00:00:00Z').toISOString(),
-    updatedAt: new Date('2026-10-04T00:00:00Z').toISOString(),
+    updatedAt: new Date('2026-10-04T07:50:00Z').toISOString(),
     skillMarkdown: `---
 name: workspace-skill-sync
+title: Google Workspace Cloud Registry Bridge (Drive & Gmail)
 description: |
   Provides bi-directional synchronization between the local Agent Engine database
   and Google Drive (for backup, archival, and sharing of SKILL.md bundles)
   and Gmail (for ingestion digests and team distribution).
 version: 1.0.0
-category: Integrations & Workspace
+category: workflow-automation
+securityClearance: internal
+isExecutable: true
+runtime: cloud_function
+sourceReferences:
+  - "notebook://studio-alchemist/workspace-bridge.ipynb"
 tags: [google-drive, gmail, workspace, sync, export, backup]
 dependencies: ["https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/gmail.send"]
 priority: 2
@@ -449,8 +700,11 @@ Ensures seamless portability of agent skills by leveraging Google Drive for clou
       name: 'workspace-skill-sync',
       title: 'Google Workspace Cloud Registry Bridge (Drive & Gmail)',
       description: 'Synchronizes skill bundles with Google Drive and sends digests via Gmail.',
-      category: 'Integrations & Workspace',
+      category: 'workflow-automation',
       version: '1.0.0',
+      runtime: 'cloud_function',
+      isExecutable: true,
+      securityClearance: 'internal',
       triggerPreconditions: [
         'User requests backing up skills to Google Drive',
         'User wants to email a skill specification or summary JSON',
@@ -497,3 +751,49 @@ Ensures seamless portability of agent skills by leveraging Google Drive for clou
     codeFiles: JSON.stringify({}, null, 2),
   }
 ];
+
+export const SEED_SKILLS: SkillRecord[] = RAW_SEED_SKILLS.map((skill) => {
+  const embedding = skill.id === 'write-skill'
+    ? WRITE_SKILL_VECTOR_768
+    : generateDeterministicVector768(
+        `${skill.title} ${skill.description} ${skill.category} ${skill.runtime || ''}`
+      );
+
+  let parametersSchema: Record<string, any> = {};
+  if (skill.parametersSchema && typeof skill.parametersSchema === 'object') {
+    parametersSchema = skill.parametersSchema;
+  } else {
+    try {
+      const parsed = JSON.parse(skill.parameters || '[]');
+      const props: Record<string, any> = {};
+      if (Array.isArray(parsed)) {
+        parsed.forEach((p: any) => {
+          props[p.name] = { type: p.type || 'string', description: p.description || '' };
+        });
+      }
+      parametersSchema = {
+        type: 'object',
+        properties: props,
+        required: Array.isArray(parsed) ? parsed.filter((p: any) => p.required).map((p: any) => p.name) : [],
+      };
+    } catch {
+      parametersSchema = { type: 'object', properties: {} };
+    }
+  }
+
+  const bundleStoragePath = skill.bundleStoragePath || `gs://gen-lang-client-0573899362.firebasestorage.app/skills/${skill.id}/`;
+  const bundleFiles = skill.bundleFiles || {
+    guidelinesMd: `# ${skill.title}\n\n${skill.description}\n\n## Runtime\n${skill.runtime || 'in_process'}\n\n## Security Clearance\n${skill.securityClearance || 'public'}\n`,
+    runtimeScript: `// Runtime execution script for ${skill.name}\nexport default async function run(params) {\n  console.log("Executing skill ${skill.name} with params:", params);\n  return { success: true, timestamp: Date.now() };\n}`,
+    runtimeFilename: 'script.js',
+  };
+
+  return {
+    ...skill,
+    embedding,
+    parametersSchema,
+    bundleStoragePath,
+    bundleFiles,
+  };
+});
+

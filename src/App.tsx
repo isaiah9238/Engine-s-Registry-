@@ -21,6 +21,7 @@ import {
   Terminal,
   RefreshCw,
   FolderGit2,
+  GitBranch,
 } from 'lucide-react';
 import type { SkillRecord, SkillStatus } from './types/skill';
 import {
@@ -28,7 +29,6 @@ import {
   googleSignIn,
   logout,
   getAccessToken,
-  testConnection,
 } from './services/firebase';
 import {
   fetchAllSkills,
@@ -44,6 +44,10 @@ import { DecisionMatcherModal } from './components/DecisionMatcherModal';
 import { WorkspaceExportModal } from './components/WorkspaceExportModal';
 import { DriveBrowserModal } from './components/DriveBrowserModal';
 import { ConfirmationModal } from './components/ConfirmationModal';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsOfService } from './pages/TermsOfService';
+import { VectorSearchStudio } from './components/VectorSearchStudio';
+import { MindMapStudio } from './components/MindMapStudio';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -51,10 +55,15 @@ export default function App() {
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Main View Navigation: Registry vs Mind Map vs Vector Engine
+  const [activeMainView, setActiveMainView] = useState<'registry' | 'mindmap' | 'vector'>('registry');
+
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [selectedRuntime, setSelectedRuntime] = useState<string>('All');
+  const [selectedClearance, setSelectedClearance] = useState<string>('All');
 
   // Active Modals
   const [selectedSkill, setSelectedSkill] = useState<SkillRecord | null>(null);
@@ -62,6 +71,7 @@ export default function App() {
   const [editingSkill, setEditingSkill] = useState<SkillRecord | null>(null);
   const [isMatcherOpen, setIsMatcherOpen] = useState(false);
   const [isDriveBrowserOpen, setIsDriveBrowserOpen] = useState(false);
+  const [isVectorStudioActive, setIsVectorStudioActive] = useState(false);
 
   // Workspace Export Modal
   const [exportModalSkill, setExportModalSkill] = useState<SkillRecord | null>(null);
@@ -71,10 +81,48 @@ export default function App() {
   const [skillToDeleteId, setSkillToDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Initialize Auth & Firestore
-  useEffect(() => {
-    testConnection();
+  // Routing State for dedicated /privacy and /terms endpoints
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      if (p === '/privacy' || p === '/terms') return p;
+      if (window.location.hash === '#/privacy') return '/privacy';
+      if (window.location.hash === '#/terms') return '/terms';
+    }
+    return '/';
+  });
 
+  useEffect(() => {
+    const handlePopState = () => {
+      const p = window.location.pathname;
+      if (p === '/privacy' || p === '/terms') {
+        setCurrentPath(p);
+      } else if (window.location.hash === '#/privacy') {
+        setCurrentPath('/privacy');
+      } else if (window.location.hash === '#/terms') {
+        setCurrentPath('/terms');
+      } else {
+        setCurrentPath('/');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
+
+  const navigateTo = (path: string) => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', path);
+    }
+    setCurrentPath(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Initialize Auth
+  useEffect(() => {
     const unsubscribeAuth = initAuth(
       async (authedUser, token) => {
         setUser(authedUser);
@@ -87,28 +135,44 @@ export default function App() {
       }
     );
 
-    // Initial fetch and real-time subscription
-    let unsubscribeFirestore: (() => void) | null = null;
-    fetchAllSkills().then((initial) => {
-      setSkills(initial);
-      setIsLoading(false);
-    });
-
-    unsubscribeFirestore = subscribeToSkills(
-      (updatedSkills) => {
-        setSkills(updatedSkills);
-        setIsLoading(false);
-      },
-      (err) => {
-        console.warn('Realtime subscription fallback:', err);
-      }
-    );
-
     return () => {
       if (unsubscribeAuth) unsubscribeAuth();
-      if (unsubscribeFirestore) unsubscribeFirestore();
     };
   }, []);
+
+  // Sync skills when user / auth state changes
+  useEffect(() => {
+    let unsubscribeFirestore: (() => void) | null = null;
+
+    if (user) {
+      setIsLoading(true);
+      fetchAllSkills().then((initial) => {
+        setSkills(initial);
+        setIsLoading(false);
+      });
+
+      unsubscribeFirestore = subscribeToSkills(
+        (updatedSkills) => {
+          setSkills(updatedSkills);
+          setIsLoading(false);
+        },
+        (err) => {
+          console.warn('Realtime subscription fallback:', err);
+          setIsLoading(false);
+        }
+      );
+    } else {
+      // Unauthenticated: load seed skills immediately without Firestore network blocking
+      fetchAllSkills().then((initial) => {
+        setSkills(initial);
+        setIsLoading(false);
+      });
+    }
+
+    return () => {
+      if (unsubscribeFirestore) unsubscribeFirestore();
+    };
+  }, [user]);
 
   const handleSignIn = async () => {
     try {
@@ -176,10 +240,24 @@ export default function App() {
     const matchesStatus =
       selectedStatus === 'All' || skill.status === selectedStatus;
 
-    return matchesSearch && matchesCategory && matchesStatus;
+    const matchesRuntime =
+      selectedRuntime === 'All' || (skill.runtime || 'in_process') === selectedRuntime;
+
+    const matchesClearance =
+      selectedClearance === 'All' || (skill.securityClearance || 'public') === selectedClearance;
+
+    return matchesSearch && matchesCategory && matchesStatus && matchesRuntime && matchesClearance;
   });
 
   const categories = Array.from(new Set(['All', ...skills.map((s) => s.category)]));
+
+  if (currentPath === '/privacy') {
+    return <PrivacyPolicy onBack={() => navigateTo('/')} />;
+  }
+
+  if (currentPath === '/terms') {
+    return <TermsOfService onBack={() => navigateTo('/')} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-indigo-500/20">
@@ -194,12 +272,88 @@ export default function App() {
         }}
         onOpenMatcher={() => setIsMatcherOpen(true)}
         onOpenDriveBrowser={() => setIsDriveBrowserOpen(true)}
+        onToggleMindMap={() =>
+          setActiveMainView((prev) => (prev === 'mindmap' ? 'registry' : 'mindmap'))
+        }
+        isMindMapActive={activeMainView === 'mindmap'}
+        onToggleVectorStudio={() =>
+          setActiveMainView((prev) => (prev === 'vector' ? 'registry' : 'vector'))
+        }
+        isVectorStudioActive={activeMainView === 'vector'}
         skillCount={skills.length}
       />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Hero Section */}
+        {/* Workspace Mode Switcher: Registry Grid vs Mind Map Architect vs Vector Engine */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setActiveMainView('registry')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeMainView === 'registry'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span>Skill Registry Catalog ({skills.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMainView('mindmap')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeMainView === 'mindmap'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/80'
+              }`}
+            >
+              <GitBranch className="w-4 h-4 text-emerald-500" />
+              <span>Interactive Mind Map &amp; Architect</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-200 font-mono">
+                write-skill
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveMainView('vector')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeMainView === 'vector'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800/80'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-purple-500" />
+              <span>Vector Database &amp; Storage Engine</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 font-mono">
+                Vector(768)
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {activeMainView === 'mindmap' && (
+          <MindMapStudio
+            onSaveSkillToFirestore={async (newSkill) => {
+              await saveSkill(newSkill);
+              setSkills((prev) => [newSkill, ...prev.filter((s) => s.id !== newSkill.id)]);
+            }}
+            onNavigateToRegistry={() => setActiveMainView('registry')}
+          />
+        )}
+
+        {activeMainView === 'vector' && (
+          <VectorSearchStudio
+            skills={skills}
+            currentUserId={user?.uid}
+            currentUserEmail={user?.email || undefined}
+            onSelectSkill={(s) => setSelectedSkill(s)}
+          />
+        )}
+
+        {activeMainView === 'registry' && (
+          <>
+            {/* Hero Section */}
         <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 p-6 sm:p-10 shadow-2xl text-white">
           <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-1/3 -mb-10 w-72 h-72 bg-sky-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -287,6 +441,32 @@ export default function App() {
                 </select>
               </div>
 
+              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl text-xs text-slate-600 dark:text-slate-300 shadow-xs">
+                <select
+                  value={selectedRuntime}
+                  onChange={(e) => setSelectedRuntime(e.target.value)}
+                  className="bg-transparent border-none focus:outline-hidden font-medium cursor-pointer"
+                >
+                  <option value="All" className="dark:bg-slate-900">All Runtimes</option>
+                  <option value="in_process" className="dark:bg-slate-900">In-Process</option>
+                  <option value="mcp" className="dark:bg-slate-900">MCP Protocol</option>
+                  <option value="cloud_function" className="dark:bg-slate-900">Cloud Function</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl text-xs text-slate-600 dark:text-slate-300 shadow-xs">
+                <select
+                  value={selectedClearance}
+                  onChange={(e) => setSelectedClearance(e.target.value)}
+                  className="bg-transparent border-none focus:outline-hidden font-medium cursor-pointer"
+                >
+                  <option value="All" className="dark:bg-slate-900">All Clearances</option>
+                  <option value="public" className="dark:bg-slate-900">Public</option>
+                  <option value="internal" className="dark:bg-slate-900">Internal</option>
+                  <option value="admin-only" className="dark:bg-slate-900">Admin-Only</option>
+                </select>
+              </div>
+
               {/* Action: Open Authoring */}
               <button
                 onClick={() => {
@@ -356,7 +536,52 @@ export default function App() {
             </p>
           </div>
         )}
+          </>
+        )}
       </main>
+
+      {/* Platform Legal & Verification Footer */}
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs py-8 px-4 sm:px-6 lg:px-8 mt-12 text-xs text-slate-500 dark:text-slate-400">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-slate-800 dark:text-slate-200">
+              Agent Engine &amp; Skill Registry
+            </span>
+            <span className="hidden sm:inline">&bull;</span>
+            <span className="text-[11px] font-mono">
+              App ID: <code className="text-indigo-600 dark:text-indigo-400 font-semibold">isaiahsanddavesapp.ai.studio</code>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => navigateTo('/privacy')}
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium cursor-pointer"
+            >
+              Privacy Policy
+            </button>
+            <button
+              onClick={() => navigateTo('/terms')}
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium cursor-pointer"
+            >
+              Terms of Service
+            </button>
+            <a
+              href="mailto:isaiah9238@gmail.com"
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium"
+            >
+              Contact Support
+            </a>
+          </div>
+
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>reCAPTCHA v3 &amp; App Check Verified</span>
+            </span>
+          </div>
+        </div>
+      </footer>
 
       {/* Modals */}
       {/* 1. Skill Detail Inspector */}

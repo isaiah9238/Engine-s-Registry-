@@ -19,6 +19,9 @@ import { SEED_SKILLS } from '../data/seedSkills';
 const SKILLS_COLLECTION = 'skills';
 
 export async function fetchAllSkills(): Promise<SkillRecord[]> {
+  if (!auth.currentUser) {
+    return SEED_SKILLS;
+  }
   try {
     const q = query(collection(db, SKILLS_COLLECTION));
     const snapshot = await getDocs(q);
@@ -48,6 +51,12 @@ export function subscribeToSkills(
   onUpdate: (skills: SkillRecord[]) => void,
   onError?: (err: any) => void
 ): Unsubscribe {
+  // Per skill guidelines: only attach onSnapshot if user is authenticated
+  if (!auth.currentUser) {
+    onUpdate(SEED_SKILLS);
+    return () => {};
+  }
+
   try {
     const q = query(collection(db, SKILLS_COLLECTION));
     return onSnapshot(
@@ -81,6 +90,10 @@ export function subscribeToSkills(
 
 export async function saveSkill(skill: SkillRecord): Promise<void> {
   const path = `${SKILLS_COLLECTION}/${skill.id}`;
+  if (!auth.currentUser) {
+    // If running in local/demo mode without sign-in, keep local
+    return;
+  }
   try {
     const docRef = doc(db, SKILLS_COLLECTION, skill.id);
     const sanitizedSkill = {
@@ -95,6 +108,9 @@ export async function saveSkill(skill: SkillRecord): Promise<void> {
 
 export async function deleteSkill(skillId: string): Promise<void> {
   const path = `${SKILLS_COLLECTION}/${skillId}`;
+  if (!auth.currentUser) {
+    return;
+  }
   try {
     const docRef = doc(db, SKILLS_COLLECTION, skillId);
     await deleteDoc(docRef);

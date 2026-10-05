@@ -10,6 +10,8 @@ import {
   Sparkles,
   Database,
   CheckCircle2,
+  ShieldCheck,
+  GitBranch,
 } from 'lucide-react';
 import type { User } from 'firebase/auth';
 
@@ -20,6 +22,10 @@ interface NavbarProps {
   onOpenNewSkill: () => void;
   onOpenMatcher: () => void;
   onOpenDriveBrowser: () => void;
+  onToggleVectorStudio?: () => void;
+  isVectorStudioActive?: boolean;
+  onToggleMindMap?: () => void;
+  isMindMapActive?: boolean;
   skillCount: number;
   isSyncing?: boolean;
 }
@@ -31,6 +37,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNewSkill,
   onOpenMatcher,
   onOpenDriveBrowser,
+  onToggleVectorStudio,
+  isVectorStudioActive = false,
+  onToggleMindMap,
+  isMindMapActive = false,
   skillCount,
   isSyncing = false,
 }) => {
@@ -52,6 +62,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
                 SKILL.md Registry
               </span>
+              <span
+                className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                title="Protected by Firebase App Check & Dave's reCAPTCHA v3"
+              >
+                <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                <span>App Check</span>
+              </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
               Ingestion Pipeline &amp; Meta-Skill Architecture
@@ -61,6 +78,40 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Action Controls & Navigation */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Interactive Mind Map & Author Studio Button */}
+          {onToggleMindMap && (
+            <button
+              onClick={onToggleMindMap}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all shadow-xs cursor-pointer ${
+                isMindMapActive
+                  ? 'bg-emerald-600 text-white shadow-emerald-500/25 shadow-md'
+                  : 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/60'
+              }`}
+              title="Interactive Skill Architecture Mind Map & write-skill Authoring"
+            >
+              <GitBranch className="w-4 h-4 text-emerald-500" />
+              <span className="hidden md:inline">Mind Map &amp; Architect</span>
+              <span className="md:hidden">Mind Map</span>
+            </button>
+          )}
+
+          {/* Vector Search & Memory Engine Button */}
+          {onToggleVectorStudio && (
+            <button
+              onClick={onToggleVectorStudio}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all shadow-xs cursor-pointer ${
+                isVectorStudioActive
+                  ? 'bg-purple-600 text-white shadow-purple-500/25 shadow-md'
+                  : 'text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800/60'
+              }`}
+              title="Vector(768) tool selection & agent memories"
+            >
+              <Sparkles className="w-4 h-4 text-purple-500" />
+              <span className="hidden md:inline">Vector &amp; Memories</span>
+              <span className="md:hidden">Vector</span>
+            </button>
+          )}
+
           {/* Matcher Button */}
           <button
             onClick={onOpenMatcher}
