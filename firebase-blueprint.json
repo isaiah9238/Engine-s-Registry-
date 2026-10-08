@@ -1,0 +1,304 @@
+{
+  "entities": {
+    "Skill": {
+      "title": "Skill",
+      "description": "An agent skill definition adhering to the SKILL.md specification and ingestion pipeline format.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the skill record."
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100,
+          "pattern": "^[a-z0-9-_]+$",
+          "description": "Slug / machine identifier of the skill matching SKILL.md frontmatter."
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Human-readable title of the skill."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Comprehensive description of the skill and its trigger preconditions."
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Primary domain category e.g. Meta-Engineering, Neuromorphic, Orchestration."
+        },
+        "version": {
+          "type": "string",
+          "maxLength": 20,
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "SemVer version identifier."
+        },
+        "authorId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID of the user who registered or created this skill."
+        },
+        "authorEmail": {
+          "type": "string",
+          "maxLength": 254,
+          "description": "Email address of the author."
+        },
+        "skillMarkdown": {
+          "type": "string",
+          "maxLength": 100000,
+          "description": "Raw content of the SKILL.md file including YAML frontmatter and operational guidelines."
+        },
+        "summaryJson": {
+          "type": "string",
+          "maxLength": 50000,
+          "description": "Pre-parsed JSON summary for instantaneous ingestion pipeline indexing and routing."
+        },
+        "parameters": {
+          "type": "string",
+          "maxLength": 30000,
+          "description": "Serialized parameter definitions and schemas accepted by this skill."
+        },
+        "examples": {
+          "type": "string",
+          "maxLength": 50000,
+          "description": "Detailed multi-turn interaction and invocation examples for agent in-context prompting."
+        },
+        "references": {
+          "type": "string",
+          "maxLength": 30000,
+          "description": "Serialized list of documentation, research papers, and technical citations."
+        },
+        "dependencies": {
+          "type": "string",
+          "maxLength": 20000,
+          "description": "Serialized list of required libraries, tool declarations, and runtime constraints."
+        },
+        "codeFiles": {
+          "type": "string",
+          "maxLength": 100000,
+          "description": "Serialized map of executable/scaffolded code files associated with the skill."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "verified", "published", "archived"],
+          "description": "Lifecycle readiness state of the skill."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether this skill is publicly discoverable across all agent engines."
+        },
+        "securityClearance": {
+          "type": "string",
+          "enum": ["public", "internal", "admin-only"],
+          "description": "Attribute-based access control clearance tier from Studio Alchemist registry."
+        },
+        "sourceReferences": {
+          "type": "string",
+          "maxLength": 30000,
+          "description": "Serialized list of notebook source links or document keys."
+        },
+        "isExecutable": {
+          "type": "boolean",
+          "description": "Whether this skill provides active tool execution bindings for runtime invocation."
+        },
+        "runtime": {
+          "type": "string",
+          "enum": ["mcp", "in_process", "cloud_function"],
+          "description": "Target runtime execution environment (MCP protocol, in-process worker, or cloud function)."
+        },
+        "returns": {
+          "type": "string",
+          "maxLength": 30000,
+          "description": "JSON Schema definition for the output / return structure."
+        },
+        "embedding": {
+          "type": "array",
+          "description": "768-dimensional float vector embedding for dynamic semantic tool selection.",
+          "items": {
+            "type": "number"
+          }
+        },
+        "parametersSchema": {
+          "type": "string",
+          "maxLength": 30000,
+          "description": "Serialized map of tool call parameter schemas and signatures."
+        },
+        "returnsSchema": {
+          "type": "string",
+          "maxLength": 30000,
+          "description": "Serialized map or JSON schema of expected tool return signature."
+        },
+        "bundleFiles": {
+          "type": "string",
+          "maxLength": 50000,
+          "description": "Serialized map of file pointers: guidelinesMd, runtimeScript, runtimeFilename."
+        },
+        "bundleStoragePath": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Cloud Storage path pointing to GCS bucket (e.g. gs://bucket/skills/{skillId}/)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp or server timestamp string."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp or server timestamp string."
+        }
+      },
+      "required": ["id", "name", "title", "description", "authorId", "status", "skillMarkdown"]
+    },
+    "ExecutionTrace": {
+      "title": "ExecutionTrace",
+      "description": "Operational subcollection tracking tool invocation telemetry, performance, and node status.",
+      "type": "object",
+      "properties": {
+        "executionId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique run/invocation ID."
+        },
+        "agentId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "ID of calling agent instance."
+        },
+        "callerClearance": {
+          "type": "string",
+          "enum": ["public", "internal", "admin-only"],
+          "description": "Clearance level asserted at invocation time."
+        },
+        "runtime": {
+          "type": "string",
+          "enum": ["mcp", "in_process", "cloud_function"],
+          "description": "Runtime target used for execution."
+        },
+        "inputParams": {
+          "type": "string",
+          "maxLength": 50000,
+          "description": "Sanitized arguments passed to the tool."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["success", "error", "timeout"],
+          "description": "Execution status outcome."
+        },
+        "latencyMs": {
+          "type": "number",
+          "description": "Total round-trip execution latency in milliseconds."
+        },
+        "errorMessage": {
+          "type": "string",
+          "maxLength": 5000,
+          "description": "Failure reason or error message if unsuccessful."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Server timestamp of execution."
+        }
+      },
+      "required": ["executionId", "agentId", "runtime", "status", "latencyMs"]
+    },
+    "AgentMemory": {
+      "title": "AgentMemory",
+      "description": "Vector indexed agent memory record for semantic, episodic, and procedural recall.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique identifier of the memory item."
+        },
+        "agentId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Identifier of the agent instance owning this memory."
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 50000,
+          "description": "Textual context, conversational observation, or procedural step."
+        },
+        "embedding": {
+          "type": "array",
+          "description": "Vector(768) embedding representation for semantic retrieval.",
+          "items": {
+            "type": "number"
+          }
+        },
+        "category": {
+          "type": "string",
+          "enum": ["semantic", "episodic", "procedural"],
+          "description": "Cognitive memory category."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp string indicating last update."
+        }
+      },
+      "required": ["agentId", "content", "category"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public profile information for skill engine contributors.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID of the user."
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Display name of the user."
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254,
+          "description": "User email."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "admin"],
+          "description": "User RBAC role."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp."
+        }
+      },
+      "required": ["userId", "email"]
+    }
+  },
+  "firestore": {
+    "/skills/{skillId}": {
+      "schema": {
+        "$ref": "#/entities/Skill"
+      },
+      "description": "Global and user skill registry entries."
+    },
+    "/skills/{skillId}/executions/{executionId}": {
+      "schema": {
+        "$ref": "#/entities/ExecutionTrace"
+      },
+      "description": "Operational subcollection for tool invocation telemetry and runtime tracing."
+    },
+    "/agent_memories/{memoryId}": {
+      "schema": {
+        "$ref": "#/entities/AgentMemory"
+      },
+      "description": "Vector-indexed cognitive agent memory entries."
+    },
+    "/users/{userId}/public/profile": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Public user profile following split collection isolation."
+    }
+  }
+}

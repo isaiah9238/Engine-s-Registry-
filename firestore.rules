@@ -1,0 +1,136 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Deny All Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    // Bootstrapped Admin check
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'isaiah9238@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidSkill(data) {
+      return data.keys().hasAll(['id', 'name', 'title', 'description', 'authorId', 'status', 'skillMarkdown'])
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100 && data.name.matches('^[a-z0-9_-]+$')
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 4000
+        && data.authorId is string && data.authorId.size() <= 128
+        && data.status in ['draft', 'verified', 'published', 'archived']
+        && (!('securityClearance' in data) || data.securityClearance in ['public', 'internal', 'admin-only'])
+        && (!('runtime' in data) || data.runtime in ['mcp', 'in_process', 'cloud_function'])
+        && (!('isExecutable' in data) || data.isExecutable is bool)
+        && (!('embedding' in data) || data.embedding is list)
+        && (!('bundleStoragePath' in data) || (data.bundleStoragePath is string && data.bundleStoragePath.size() <= 500))
+        && (!('returnsSchema' in data) || data.returnsSchema is map || data.returnsSchema is string)
+        && (!('bundleFiles' in data) || data.bundleFiles is map || data.bundleFiles is string)
+        && data.skillMarkdown is string && data.skillMarkdown.size() <= 200000;
+    }
+
+    function isValidMemory(data) {
+      return data.keys().hasAll(['agentId', 'content', 'category'])
+        && data.agentId is string && data.agentId.size() > 0 && data.agentId.size() <= 128
+        && data.content is string && data.content.size() > 0 && data.content.size() <= 50000
+        && data.category in ['semantic', 'episodic', 'procedural']
+        && (!('embedding' in data) || data.embedding is list);
+    }
+
+    // Skills Collection
+    match /skills/{skillId} {
+      // Safe Get Rule with Studio Alchemist ABAC clearance tiers
+      allow get: if isValidId(skillId) && (
+        resource != null && (
+          (resource.data.get('securityClearance', 'public') == 'admin-only' && isAdmin()) ||
+          (resource.data.get('securityClearance', 'public') == 'internal' && (isSignedIn() || isAdmin())) ||
+          (resource.data.get('securityClearance', 'public') == 'public' && (
+            resource.data.get('isPublic', false) == true ||
+            resource.data.get('status', '') == 'published' ||
+            (isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()))
+          )) ||
+          (isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()))
+        )
+      );
+      
+      // List query security
+      allow list: if isSignedIn();
+
+      // Create rule
+      allow create: if isSignedIn()
+        && isValidId(skillId)
+        && incoming().id == skillId
+        && incoming().authorId == request.auth.uid
+        && isValidSkill(incoming());
+
+      // Safe Update Rule (safely compares createdAt even if null/omitted)
+      allow update: if isSignedIn()
+        && isValidId(skillId)
+        && (isAdmin() || (existing().authorId == request.auth.uid && incoming().authorId == existing().authorId))
+        && incoming().get('createdAt', null) == existing().get('createdAt', null)
+        && isValidSkill(incoming());
+
+      // Delete rule
+      allow delete: if isSignedIn()
+        && isValidId(skillId)
+        && (isAdmin() || existing().authorId == request.auth.uid);
+
+      // Operational Subcollection: Execution Traces
+      match /executions/{executionId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn()
+          && isValidId(executionId)
+          && incoming().keys().hasAll(['executionId', 'agentId', 'runtime', 'status', 'latencyMs'])
+          && incoming().executionId is string && incoming().executionId.size() <= 128
+          && incoming().agentId is string && incoming().agentId.size() <= 128
+          && incoming().status in ['success', 'error', 'timeout']
+          && incoming().runtime in ['mcp', 'in_process', 'cloud_function']
+          && incoming().latencyMs is number;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // Agent Memories Collection (Vector indexed)
+    match /agent_memories/{memoryId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && isValidId(memoryId)
+        && incoming().agentId == request.auth.uid
+        && isValidMemory(incoming());
+      allow update: if isSignedIn()
+        && isValidId(memoryId)
+        && (isAdmin() || existing().agentId == request.auth.uid)
+        && isValidMemory(incoming());
+      allow delete: if isSignedIn()
+        && isValidId(memoryId)
+        && (isAdmin() || existing().agentId == request.auth.uid);
+    }
+
+    // User Public Profile Split Collection
+    match /users/{userId}/public/profile {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+  }
+}

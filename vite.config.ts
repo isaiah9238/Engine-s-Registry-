@@ -1,0 +1,48 @@
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import fs from 'fs';
+import {defineConfig} from 'vite';
+
+let devSecrets: Record<string, string> = {};
+try {
+  if (fs.existsSync('/app/.dev.env.json')) {
+    devSecrets = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf-8'));
+  }
+} catch {
+  // ignore
+}
+
+const recaptchaKey =
+  devSecrets["DAVE'S_PROJECT_RECAPTCHA_KEY"] ||
+  devSecrets["DAVES_PROJECT_RECAPTCHA_KEY"] ||
+  devSecrets["RECAPTCHA_SITE_KEY"] ||
+  process.env.RECAPTCHA_SITE_KEY ||
+  '6LeNrt4tAAAAANvI5Tjm3K-p3yzSDGlCvWiVGqRR';
+
+const appCheckToken =
+  devSecrets["APPCHECK_TOKEN"] ||
+  process.env.APPCHECK_TOKEN ||
+  '03B9F608-A42D-4266-A85F-50101EFB5CE7';
+
+export default defineConfig(() => {
+  return {
+    plugins: [react(), tailwindcss()],
+    define: {
+      'process.env.RECAPTCHA_SITE_KEY': JSON.stringify(recaptchaKey),
+      'process.env.APPCHECK_TOKEN': JSON.stringify(appCheckToken),
+    },
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+    server: {
+      // HMR is disabled in AI Studio via DISABLE_HMR env var.
+      // Do not modify—file watching is disabled to prevent flickering during agent edits.
+      hmr: process.env.DISABLE_HMR !== 'true',
+      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+  };
+});

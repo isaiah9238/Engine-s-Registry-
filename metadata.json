@@ -1,0 +1,6 @@
+{
+  "name": "Agent Engine - Skill Registry & Architect Studio",
+  "description": "High-fidelity database and ingestion engine for agent skills following the SKILL.md registration standard with Google Workspace and Firebase integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

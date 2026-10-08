@@ -1,0 +1,27 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "skills",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "securityClearance", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "skills",
+      "fieldPath": "embedding",
+      "indexes": [
+        {
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          },
+          "queryScope": "COLLECTION"
+        }
+      ]
+    }
+  ]
+}

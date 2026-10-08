@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production builds
+build/
+dist/
+dist-ssr/
+*.local
+
+# Bundler & framework cache
+.vite/
+.turbo/
+.cache/
+
+# Coverage & test output
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+firebase-debug.log*
+firestore-debug.log*
+
+# Environment & credentials (never commit secrets)
+.env*
+!.env.example
+firebase-applet-config.json
+serviceAccount*.json
+*-adminsdk-*.json
+.firebase/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+[Dd]esktop.ini
+
+# IDE & Editor artifacts
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.idea/
+*.vscode/
