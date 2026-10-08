@@ -26,6 +26,8 @@ interface NavbarProps {
   isVectorStudioActive?: boolean;
   onToggleMindMap?: () => void;
   isMindMapActive?: boolean;
+  onToggleChat?: () => void;
+  isChatOpen?: boolean;
   skillCount: number;
   isSyncing?: boolean;
 }
@@ -41,6 +43,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   isVectorStudioActive = false,
   onToggleMindMap,
   isMindMapActive = false,
+  onToggleChat,
+  isChatOpen = false,
   skillCount,
   isSyncing = false,
 }) => {
@@ -132,6 +136,23 @@ export const Navbar: React.FC<NavbarProps> = ({
             <HardDrive className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span className="hidden lg:inline">Drive Cloud</span>
           </button>
+
+          {/* Gemini Chat Copilot Button */}
+          {onToggleChat && (
+            <button
+              onClick={onToggleChat}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all shadow-xs cursor-pointer ${
+                isChatOpen
+                  ? 'bg-gradient-to-r from-indigo-600 to-emerald-600 text-white shadow-md shadow-indigo-500/20'
+                  : 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800/60'
+              }`}
+              title="Chat with Gemini 3.8 Flash Skill Architect"
+            >
+              <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+              <span className="hidden md:inline">Gemini Copilot</span>
+              <span className="md:hidden">AI</span>
+            </button>
+          )}
 
           {/* New Skill Button */}
           <button

@@ -26,13 +26,30 @@ import {
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Dynamically resolve configuration from secrets & environment variables with static fallback
+const resolvedConfig = {
+  ...firebaseConfig,
+  apiKey: (typeof process !== 'undefined' && process.env?.FIREBASE_API_KEY) || firebaseConfig.apiKey,
+  projectId: (typeof process !== 'undefined' && process.env?.FIREBASE_PROJECT_ID) || firebaseConfig.projectId,
+  authDomain: (typeof process !== 'undefined' && process.env?.FIREBASE_AUTHDOMAIN) || firebaseConfig.authDomain,
+  storageBucket:
+    (typeof process !== 'undefined' && process.env?.FIREBASE_STORAGEBUCKET
+      ? (process.env.FIREBASE_STORAGEBUCKET.endsWith('.ap')
+          ? process.env.FIREBASE_STORAGEBUCKET + 'p'
+          : process.env.FIREBASE_STORAGEBUCKET)
+      : firebaseConfig.storageBucket),
+  messagingSenderId: (typeof process !== 'undefined' && process.env?.FIREBASE_MESSAGINGSENDER) || firebaseConfig.messagingSenderId,
+  appId: (typeof process !== 'undefined' && process.env?.FIREBASE_APPID) || firebaseConfig.appId,
+  firestoreDatabaseId: (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc',
+};
+
+const app = !getApps().length ? initializeApp(resolvedConfig) : getApp();
 
 // Initialize Firebase App Check with registered debug token and Dave's reCAPTCHA key
 export let appCheck: AppCheck | null = null;
 
 const recaptchaSiteKey =
-  (firebaseConfig as any).recaptchaSiteKey ||
+  (resolvedConfig as any).recaptchaSiteKey ||
   (typeof process !== 'undefined' && process.env?.RECAPTCHA_SITE_KEY) ||
   '6LeNrt4tAAAAANvI5Tjm3K-p3yzSDGlCvWiVGqRR';
 
@@ -51,7 +68,7 @@ if (typeof window !== 'undefined' && (appCheckDebugToken || recaptchaSiteKey)) {
           getToken: async () => {
             try {
               const res = await fetch(
-                `https://content-firebaseappcheck.googleapis.com/v1/projects/${firebaseConfig.projectId}/apps/${firebaseConfig.appId}:exchangeDebugToken?key=${firebaseConfig.apiKey}`,
+                `https://content-firebaseappcheck.googleapis.com/v1/projects/${resolvedConfig.projectId}/apps/${resolvedConfig.appId}:exchangeDebugToken?key=${resolvedConfig.apiKey}`,
                 {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -85,14 +102,14 @@ if (typeof window !== 'undefined' && (appCheckDebugToken || recaptchaSiteKey)) {
 }
 
 // Initialize Firestore compliant with SKILL.md specification
-export const db: Firestore = (firebaseConfig as any).firestoreDatabaseId
-  ? getFirestore(app, (firebaseConfig as any).firestoreDatabaseId)
+export const db: Firestore = (resolvedConfig as any).firestoreDatabaseId
+  ? getFirestore(app, (resolvedConfig as any).firestoreDatabaseId)
   : getFirestore(app);
 
 // Initialize Firebase Cloud Storage for skill bundles (/skills/{skillId}/)
 export const storage: FirebaseStorage = getStorage(app);
 export const storageBucketUrl: string =
-  (firebaseConfig as any).storageBucket || 'gen-lang-client-0573899362.firebasestorage.app';
+  (resolvedConfig as any).storageBucket || 'gen-lang-client-0573899362.firebasestorage.app';
 
 export const auth = getAuth(app);
 

@@ -31,6 +31,12 @@ export default defineConfig(() => {
     define: {
       'process.env.RECAPTCHA_SITE_KEY': JSON.stringify(recaptchaKey),
       'process.env.APPCHECK_TOKEN': JSON.stringify(appCheckToken),
+      'process.env.FIREBASE_API_KEY': JSON.stringify(process.env.FIREBASE_API_KEY || ''),
+      'process.env.FIREBASE_PROJECT_ID': JSON.stringify(process.env.FIREBASE_PROJECT_ID || ''),
+      'process.env.FIREBASE_AUTHDOMAIN': JSON.stringify(process.env.FIREBASE_AUTHDOMAIN || ''),
+      'process.env.FIREBASE_STORAGEBUCKET': JSON.stringify(process.env.FIREBASE_STORAGEBUCKET || ''),
+      'process.env.FIREBASE_MESSAGINGSENDER': JSON.stringify(process.env.FIREBASE_MESSAGINGSENDER || ''),
+      'process.env.FIREBASE_APPID': JSON.stringify(process.env.FIREBASE_APPID || ''),
     },
     resolve: {
       alias: {

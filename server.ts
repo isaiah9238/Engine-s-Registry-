@@ -58,6 +58,76 @@ async function startServer() {
     }
   });
 
+  // API Route: Gemini Skill Architect Chat Bot
+  app.post('/api/chat', async (req: Request, res: Response) => {
+    try {
+      const { messages, context } = req.body;
+      if (!Array.isArray(messages) || messages.length === 0) {
+        res.status(400).json({ error: 'Messages array is required' });
+        return;
+      }
+
+      // Convert messages to @google/genai content structures
+      const contents = messages.map((m: { role: string; content: string }) => ({
+        role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+      const systemInstruction = `You are the Gemini Skill Architect Copilot, embedded directly into the Agent Engine & Skill Registry Studio.
+Your role is to guide and assist users in designing, writing, auditing, formatting, and refining autonomous agent skills according to the SKILL.md specification and progressive disclosure standards.
+
+Knowledge & Frameworks You Master:
+1. Template 1: Basic Open Standard (Instruction-Only lightweight markdown guidance)
+2. Template 2: Studio Alchemist Enterprise Standard (Progressive Disclosure, pinned CLI commands like "npx -y firebase-tools@latest", referenced docs)
+3. Template 3: Strobes 4-Layer Methodology (Methodology Layer SKILL.md, Scripts Layer scripts/, Shared Library scripts/lib/, Data Layer project.db SQLite, 6 operational assessment phases)
+4. Template 4: write-skill Meta-Skill Ingestion Payload (parametersSchema map, 768-dim vector text representation, machine-digestible JSON contracts, deterministic in-process validators)
+
+Operational Principles:
+- Zero-Pill Discipline: Never generate empty conversational filler or vague fluff. Every sentence must establish a concrete operational boundary, trigger condition, or instruction.
+- Schema Invariance: Clearly specify parameter names, types (string, number, boolean, object, array), and required flags.
+- Positive Instruction: State clearly what the agent MUST do rather than only listing negative restrictions.
+
+When the user asks you to create or improve a skill, output production-ready Markdown with valid YAML frontmatter and well-structured Markdown sections (# Title, ## Description & Mission, ## When to Use, ## When NOT to Use, ## Parameters, ## Instructions / Phases, ## Examples, ## Scaffolding).
+
+${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`;
+
+      let response;
+      let usedModel = 'gemini-3.1-flash-lite';
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite',
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.7,
+          },
+        });
+      } catch (primaryErr: any) {
+        console.warn('Primary model gemini-3.1-flash-lite fallback notice:', primaryErr?.message || primaryErr);
+        usedModel = 'gemini-3.8-flash';
+        response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.7,
+          },
+        });
+      }
+
+      const reply = response.text || 'I could not generate a response. Please try again.';
+      res.json({
+        reply,
+        model: usedModel,
+      });
+    } catch (err: any) {
+      console.error('Gemini chat error:', err?.message || err);
+      res.status(500).json({
+        error: err?.message || 'Failed to generate chat response from Gemini',
+      });
+    }
+  });
+
   // Health and System Diagnostics
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({
