@@ -48,12 +48,16 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { VectorSearchStudio } from './components/VectorSearchStudio';
 import { MindMapStudio } from './components/MindMapStudio';
+import { GeminiChatBot } from './components/GeminiChatBot';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Gemini Chat Bot Floating Copilot
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Main View Navigation: Registry vs Mind Map vs Vector Engine
   const [activeMainView, setActiveMainView] = useState<'registry' | 'mindmap' | 'vector'>('registry');
@@ -249,6 +253,36 @@ export default function App() {
     return matchesSearch && matchesCategory && matchesStatus && matchesRuntime && matchesClearance;
   });
 
+  const handleApplyAiSkillMarkdown = (markdown: string) => {
+    // Generate draft skill from Gemini-generated markdown
+    const draftSkill: SkillRecord = {
+      id: `ai-skill-${Date.now().toString(36)}`,
+      name: 'ai_draft_skill',
+      title: 'AI Drafted Skill',
+      description: 'Drafted by Gemini Skill Architect Copilot',
+      category: 'orchestration',
+      version: '1.0.0',
+      authorId: user?.uid || 'system-agent',
+      authorEmail: user?.email || 'isaiah9238@gmail.com',
+      status: 'draft',
+      isPublic: true,
+      securityClearance: 'public',
+      isExecutable: true,
+      runtime: 'in_process',
+      skillMarkdown: markdown,
+      summaryJson: '{}',
+      parameters: '[]',
+      examples: '[]',
+      references: '[]',
+      dependencies: '[]',
+      codeFiles: '{}',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setEditingSkill(draftSkill);
+    setIsEditorOpen(true);
+  };
+
   const categories = Array.from(new Set(['All', ...skills.map((s) => s.category)]));
 
   if (currentPath === '/privacy') {
@@ -280,6 +314,8 @@ export default function App() {
           setActiveMainView((prev) => (prev === 'vector' ? 'registry' : 'vector'))
         }
         isVectorStudioActive={activeMainView === 'vector'}
+        onToggleChat={() => setIsChatOpen((prev) => !prev)}
+        isChatOpen={isChatOpen}
         skillCount={skills.length}
       />
 
@@ -652,6 +688,14 @@ export default function App() {
         onConfirm={executeConfirmedDeleteSkill}
         onCancel={() => setSkillToDeleteId(null)}
         isLoading={isDeleting}
+      />
+
+      {/* 7. Gemini Skill Architect Chat Bot Copilot */}
+      <GeminiChatBot
+        isOpen={isChatOpen}
+        onToggle={() => setIsChatOpen((prev) => !prev)}
+        onApplySkillMarkdown={handleApplyAiSkillMarkdown}
+        activeSkill={selectedSkill}
       />
     </div>
   );

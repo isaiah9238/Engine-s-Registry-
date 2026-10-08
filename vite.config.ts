@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
 
 let devSecrets: Record<string, string> = {};
 try {
@@ -23,7 +23,7 @@ const recaptchaKey =
 const appCheckToken =
   devSecrets["APPCHECK_TOKEN"] ||
   process.env.APPCHECK_TOKEN ||
-  '03B9F608-A42D-4266-A85F-50101EFB5CE7';
+  '';
 
 export default defineConfig(() => {
   return {
@@ -31,6 +31,12 @@ export default defineConfig(() => {
     define: {
       'process.env.RECAPTCHA_SITE_KEY': JSON.stringify(recaptchaKey),
       'process.env.APPCHECK_TOKEN': JSON.stringify(appCheckToken),
+      'process.env.FIREBASE_API_KEY': JSON.stringify(process.env.FIREBASE_API_KEY || ''),
+      'process.env.FIREBASE_PROJECT_ID': JSON.stringify(process.env.FIREBASE_PROJECT_ID || ''),
+      'process.env.FIREBASE_AUTHDOMAIN': JSON.stringify(process.env.FIREBASE_AUTHDOMAIN || ''),
+      'process.env.FIREBASE_STORAGEBUCKET': JSON.stringify(process.env.FIREBASE_STORAGEBUCKET || ''),
+      'process.env.FIREBASE_MESSAGINGSENDER': JSON.stringify(process.env.FIREBASE_MESSAGINGSENDER || ''),
+      'process.env.FIREBASE_APPID': JSON.stringify(process.env.FIREBASE_APPID || ''),
     },
     resolve: {
       alias: {
@@ -38,10 +44,7 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
   };
