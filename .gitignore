@@ -33,6 +33,7 @@ firebase-applet-config.json
 serviceAccount*.json
 *-adminsdk-*.json
 .firebase/
+.npmrc
 
 # OS metadata
 .DS_Store

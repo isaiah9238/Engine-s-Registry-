@@ -390,7 +390,7 @@ export default function App() {
         {activeMainView === 'registry' && (
           <>
             {/* Hero Section */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 p-6 sm:p-10 shadow-2xl text-white">
+        <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 p-6 sm:p-10 shadow-2xl text-white">
           <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-1/3 -mb-10 w-72 h-72 bg-sky-500/10 rounded-full blur-2xl pointer-events-none" />
 

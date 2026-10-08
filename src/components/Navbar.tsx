@@ -53,7 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Logo & App Title */}
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 p-0.5 shadow-md shadow-indigo-500/20 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-linear-to-tr from-indigo-600 via-indigo-500 to-sky-400 p-0.5 shadow-md shadow-indigo-500/20 flex items-center justify-center">
             <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
               <BrainCircuit className="w-5 h-5 text-indigo-400 animate-pulse" />
             </div>
@@ -143,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={onToggleChat}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all shadow-xs cursor-pointer ${
                 isChatOpen
-                  ? 'bg-gradient-to-r from-indigo-600 to-emerald-600 text-white shadow-md shadow-indigo-500/20'
+                  ? 'bg-linear-to-r from-indigo-600 to-emerald-600 text-white shadow-md shadow-indigo-500/20'
                   : 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800/60'
               }`}
               title="Chat with Gemini 3.8 Flash Skill Architect"
@@ -170,10 +170,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="hidden xl:flex flex-col text-right leading-none"
                 title={user.email || ''}
               >
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-35">
                   {user.displayName || 'Authorized Agent'}
                 </span>
-                <span className="text-[10px] text-slate-400 truncate max-w-[140px]">
+                <span className="text-[10px] text-slate-400 truncate max-w-35">
                   {user.email}
                 </span>
               </div>
