@@ -12,9 +12,9 @@ isExecutable: true
 runtime: in_process
 sourceReferences:
   - "notebook://studio-alchemist/meta-authoring.ipynb"
-  - "https://agent-engine.internal/specs/skill-v1"
+  - "[https://agent-engine.internal/specs/skill-v1](https://agent-engine.internal/specs/skill-v1)"
 tags: [meta-skill, skill-authoring, decision-engine, prompt-engineering, ingestion-pipeline]
-dependencies: ["js-yaml", "@types/node", "lucide-react"]
+dependencies: ["js-yaml", "@types/node"]
 priority: 1
 thermodynamicFootprint: low
 requiresHumanReview: false
@@ -59,14 +59,14 @@ The `write-skill` meta-skill is the core cognitive blueprint of the Agent Engine
 ## In-Context Examples & Multi-Turn Walkthroughs
 
 ### Example 1: Authoring a Cloud Storage Sync Skill
-* **Prompt:** "Create a skill for managing S3 and Google Cloud Storage bucket backups with checksum verification."
-* **Scenario Context:** Developer needs automated multi-cloud archival.
-* **Expected Outcome:** Generates a valid SKILL.md with YAML frontmatter, parameters for `sourceBucket`, `targetBucket`, `verifyChecksum`, and scaffolding for MD5 comparisons.
+- **Prompt:** "Create a skill for managing S3 and Google Cloud Storage bucket backups with checksum verification."
+- **Scenario Context:** Developer needs automated multi-cloud archival.
+- **Expected Outcome:** Generates a valid SKILL.md with YAML frontmatter, parameters for `sourceBucket`, `targetBucket`, `verifyChecksum`, and scaffolding for MD5 comparisons.
 
 ### Example 2: Determining Best Skill for a Machine Learning Task
-* **Prompt:** "The user wants to optimize low-power inference on edge neuromorphic hardware."
-* **Scenario Context:** Agent queries registry for neuromorphic and low-power.
-* **Expected Outcome:** Evaluates `write-skill` vs `neuromorphic-energy-optimizer`. Returns `neuromorphic-energy-optimizer` with confidence 98% and provides rationale based on Landauer limits and SNN event-driven timing.
+- **Prompt:** "The user wants to optimize low-power inference on edge neuromorphic hardware."
+- **Scenario Context:** Agent queries registry for neuromorphic and low-power.
+- **Expected Outcome:** Evaluates `write-skill` vs `neuromorphic-energy-optimizer`. Returns `neuromorphic-energy-optimizer` with confidence 98% and provides rationale based on Landauer limits and SNN event-driven timing.
 
 ## Scaffolded Code & Reference Implementations
 
@@ -86,4 +86,3 @@ export function validateSkillStructure(manifest: Record<string, any>): { valid: 
   }
   return { valid: issues.length === 0, issues };
 }
-```

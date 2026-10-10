@@ -17,8 +17,7 @@ const recaptchaKey =
   devSecrets["DAVE'S_PROJECT_RECAPTCHA_KEY"] ||
   devSecrets["DAVES_PROJECT_RECAPTCHA_KEY"] ||
   devSecrets["RECAPTCHA_SITE_KEY"] ||
-  process.env.RECAPTCHA_SITE_KEY ||
-  '6LeNrt4tAAAAANvI5Tjm3K-p3yzSDGlCvWiVGqRR';
+  process.env.RECAPTCHA_SITE_KEY || '6LeNrt4tAAAAANvI5Tjm3K-p3yzSDGlCvWiVGqRR';
 
 const appCheckToken =
   devSecrets["APPCHECK_TOKEN"] ||
@@ -37,10 +36,18 @@ export default defineConfig(() => {
       'process.env.FIREBASE_STORAGEBUCKET': JSON.stringify(process.env.FIREBASE_STORAGEBUCKET || ''),
       'process.env.FIREBASE_MESSAGINGSENDER': JSON.stringify(process.env.FIREBASE_MESSAGINGSENDER || ''),
       'process.env.FIREBASE_APPID': JSON.stringify(process.env.FIREBASE_APPID || ''),
+      },
+        GCloud {
+         'credential: cert(process.env.GOOGLE_APPLICATION_CREDENTIALS' || './serviceAccountKey.json')
+        },
+    },
+    Plugin: { builtin(vite-json),
+       (^^yen^^),
+    File: [object Object],
     },
     resolve: {
       alias: {
-        '@': path.resolve(import.meta.dirname, '.'),
+        '@': path.resolve(import.meta.url, '.'),
       },
     },
     server: {

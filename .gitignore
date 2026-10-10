@@ -30,6 +30,8 @@ firestore-debug.log*
 .env*
 !.env.example
 firebase-applet-config.json
+firebase-service-account.json
+serviceAccountKey.json
 serviceAccount*.json
 *-adminsdk-*.json
 .firebase/

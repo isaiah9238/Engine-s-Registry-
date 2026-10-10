@@ -3,7 +3,7 @@
  * Performs structural validation and synthesizes skill manifests.
  */
 export async function execute(params) {
-  const { skillName, title, mission, parametersList, examplesList } = params;
+  const { skillName, title, mission, targetCapabilities, parametersList, examplesList } = params;
 
   const errors = [];
   if (!skillName || !/^[a-z0-9-_]+$/.test(skillName)) {
@@ -14,6 +14,9 @@ export async function execute(params) {
   }
   if (!mission || typeof mission !== 'string') {
     errors.push('mission is required.');
+  }
+  if (!Array.isArray(targetCapabilities) || targetCapabilities.length === 0) {
+    errors.push('targetCapabilities must be a non-empty array.');
   }
   if (!Array.isArray(parametersList) || parametersList.length === 0) {
     errors.push('parametersList must be a non-empty array.');
@@ -30,12 +33,12 @@ export async function execute(params) {
     };
   }
 
-  // Generate standardized manifest
   const manifest = {
     skillId: skillName,
-    name: skillName.replace(/-/g, '_'),
+    name: skillName,
     title: title.trim(),
     mission: mission.trim(),
+    targetCapabilities,
     parametersDeclared: parametersList.length,
     examplesDeclared: examplesList.length,
     validatedAt: new Date().toISOString(),
