@@ -19,21 +19,21 @@ requiresHumanReview: false
 # Toroidal Color Matrix: 7-Layer Parametric Transformation Engine
 
 ## Description & Mission
-The `toroidal-color-matrix` skill governs the generation, procedural evaluation, and visual rendering of 7-layer toroidal color fields. It maps multi-dimensional color metrics onto compact continuous 2-manifolds embedded in $\mathbb{R}^3$ ($T^2 = S^1 \times S^1$), handling analytical parametric evaluations, coordinate conversions, and client-side rendering via React Three Fiber (R3F) and Three.js.
+The `toroidal-color-matrix` skill governs the generation, procedural evaluation, and visual rendering of 7-layer toroidal color fields. It maps multi-dimensional color metrics onto compact continuous 2-manifolds embedded in `\mathbb{R}^2 \cdot \text{Time}^2\text{Slope}^1\pm1`, handling analytical parametric evaluations, coordinate conversions, and client-side rendering via React Three Fiber (R3F) and Three.js.
 
 ---
 
 ## Mathematical Foundations & Parametric Manifold Topology
 
-A standard 2-torus embedded in Cartesian coordinate space is parameterized by two angular coordinates $u, v \in [0, 2\pi)$:
+A standard 2-torus embedded in Cartesian coordinate space is parameterized by two angular coordinates `u, v \in [0, 2\pi)`:
 
-$$x(u, v) = (R + r \cos v) \cos u$$
-$$y(u, v) = (R + r \cos v) \sin u$$
-$$z(u, v) = r \sin v$$
+`$x(u, v) = (R + r \cos v) \cos u$`
+`$y(u, v) = (R + r \cos v) \sin u$`
+`$z(u, v) = r \sin v$`
 
 where:
-* $R$ denotes the major radius (distance from the center of the tube to the center of the torus).
-* $r$ denotes the minor radius (radius of the interior tube, where $r < R$).
+* `R` denotes the major radius (distance from the center of the tube to the center of the torus).
+* `r` denotes the minor radius (radius of the interior tube, where `r < R`).
 
 ### The 7 Transformation Layers
 The color matrix projects state trajectories through seven discrete layers:
@@ -106,3 +106,5 @@ export interface ToroidalMatrixState {
   readonly timeEpoch: number;
   readonly isDynamic: boolean;
 }
+
+$=`
