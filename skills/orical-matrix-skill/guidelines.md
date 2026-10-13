@@ -38,13 +38,13 @@ where:
 ### The 7 Transformation Layers
 The color matrix projects state trajectories through seven discrete layers:
 
-1. **Layer 1: Base Manifold Coordinate Mapping ($L_1$)**: Evaluates canonical surface coordinates $(u, v)$ from parametric step vectors.
-2. **Layer 2: Metric Tensor & Curvature Modulation ($L_2$)**: Calculates the Riemannian metric $g_{ij}$ and adjusts local density proportional to Gaussian curvature $K(u, v) = \frac{\cos v}{r(R + r \cos v)}$.
-3. **Layer 3: OKLab / Polar Chrominance Transformation ($L_3$)**: Maps angular coordinates to perceptually uniform color coordinates ($L, a, b$ or $J, C, h$).
-4. **Layer 4: 8-Fold Radial Symmetry Harmonics ($L_4$)**: Applies cyclic boundary folding via periodic harmonic modulation: $f(u) = \sin(8u) \cdot \cos(8v)$.
-5. **Layer 5: Hysteresis Field & Phase Drift ($L_5$)**: Introduces dynamic time-evolution phase offsets $\phi_t$ modeling relaxation dynamics across the surface.
-6. **Layer 6: Normal Vector & Lighting Differential ($L_6$)**: Computes analytical surface normals $\mathbf{n}(u, v) = (\cos v \cos u, \cos v \sin u, \sin v)^T$ for specular and diffuse scattering.
-7. **Layer 7: Viewport Fragment Projection & Quantization ($L_7$)**: Projects the composite spectral radiance vector into linear sRGB space with gamma correction for WebGL framebuffers.
+1. **Layer 1: Base Manifold Coordinate Mapping (`L_1`)**: Evaluates canonical surface coordinates `(u, v)` from parametric step vectors.
+2. **Layer 2: Metric Tensor & Curvature Modulation (`L_2`)**: Calculates the Riemannian metric `g_{ij}` and adjusts local density proportional to Gaussian curvature `K(u, v) = \frac{\cos v}{r(R + r \cos v)}`.
+3. **Layer 3: OKLab / Polar Chrominance Transformation (`L_3`)**: Maps angular coordinates to perceptually uniform color coordinates (`L, a, b` or `J, C, h`).
+4. **Layer 4: 8-Fold Radial Symmetry Harmonics (`L_4`)**: Applies cyclic boundary folding via periodic harmonic modulation: `f(u) = \sin(8u) \cdot \cos(8v)`.
+5. **Layer 5: Hysteresis Field & Phase Drift (`L_5`)**: Introduces dynamic time-evolution phase offsets `\phi_t` modeling relaxation dynamics across the surface.
+6. **Layer 6: Normal Vector & Lighting Differential (`L_6`)**: Computes analytical surface normals `\mathbf{n}(u, v) = (\cos v \cos u, \cos v \sin u, \sin v)^T` for specular and diffuse scattering.
+7. **Layer 7: Viewport Fragment Projection & Quantization (`L_7`)**: Projects the composite spectral radiance vector into linear sRGB space with gamma correction for WebGL framebuffers.
 
 ---
 
@@ -106,5 +106,3 @@ export interface ToroidalMatrixState {
   readonly timeEpoch: number;
   readonly isDynamic: boolean;
 }
-
-$=`
