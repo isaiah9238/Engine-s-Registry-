@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "seed:write-skill": "tsx scripts/seedWriteSkill.ts",
-    "dev": "tsx server.ts",
+    "dev": "dev",
     "start": "next",
     "build": "vite build",
     "preview": "vite preview",

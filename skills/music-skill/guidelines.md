@@ -1,0 +1,5 @@
+<system-reminder>Background subagent "cb773faf-60d2-48d1-bf74-2cb924fba818" (general-purpose: "Add game banner and og type") completed successfully.
+Duration: 120.7s
+
+response:
+I'll start with the `og` skill and the existing brand assets so the banner and site metadata stay consistent.Existing share art is the source of truth. I’ll match that dark-room scene, then write the game type and the 50:11 banner together.The wide frame is the right scene. I’ll enlarge the title lockup and check the lettering before handing the files over.Brand-asset pass passed. `src/lib/og/site.json` now has `"title": "See Music"`, `"type": "x:game"`, and `"card": "custom"`. `public/x-banner.jpg` is a 1200×264 JPEG (22 KB) of the same dark-room ripple scene: the SEE MUSIC lockup sits in the left half above the midline, with an empty strip along the bottom edge.</system-reminder>
