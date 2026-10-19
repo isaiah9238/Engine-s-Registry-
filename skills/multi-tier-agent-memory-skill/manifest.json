@@ -1,0 +1,34 @@
+{
+  "name": "multi-tier-agent-memory",
+  "title": "Multi-Tier Agent Memory & Semantic Vector Indexer",
+  "version": "1.0.0",
+  "category": "orchestration",
+  "securityClearance": "public",
+  "isExecutable": true,
+  "runtime": "in_process",
+  "tags": ["agent-memory", "firestore-vector", "semantic-search", "context-assembly"],
+  "priority": 1,
+  "thermodynamicFootprint": "low",
+  "requiresHumanReview": false,
+  "parametersSchema": {
+    "type": "object",
+    "required": ["operation", "content"],
+    "properties": {
+      "operation": {
+        "type": "string",
+        "enum": ["store", "recall", "assemble_context"]
+      },
+      "category": {
+        "type": "string",
+        "enum": ["demographic", "preference", "project", "rule"]
+      },
+      "content": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "number",
+        "default": 5
+      }
+    }
+  }
+}
