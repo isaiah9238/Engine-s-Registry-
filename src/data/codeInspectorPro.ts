@@ -454,9 +454,9 @@ button {
               "Current File Name: " + activeFile.name + "\\n" +
               "Language: " + activeFile.language + "\\n\\n" +
               "Current File Content:\\n" +
-              "```" + activeFile.language + "\\n" +
+              "\`\`\`" + activeFile.language + "\\n" +
               activeFile.content + "\\n" +
-              "```\\n\\n" +
+              "\`\`\`\\n\\n" +
               "Task: " + promptText + "\\n\\n" +
               "Return ONLY the updated code without markdown code blocks or explanations so it can be directly injected into the editor."
           }]
@@ -475,7 +475,7 @@ button {
 
         if (data.candidates && data.candidates[0].content.parts[0].text) {
           let cleanedCode = data.candidates[0].content.parts[0].text.trim();
-          cleanedCode = cleanedCode.replace(/^```[a-z]*\\n/i, '').replace(/\\n```$/, '');
+          cleanedCode = cleanedCode.replace(/^\`\`\`[a-z]*\\n/i, '').replace(/\\n\`\`\`$/, '');
           return cleanedCode;
         } else {
           throw new Error(data.error?.message || 'Invalid API response');
@@ -1210,16 +1210,16 @@ button {
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
-</html>\`;
+</html>`;
 
-export const CODE_INSPECTOR_SECTION_MD = \`
+export const CODE_INSPECTOR_SECTION_MD = `
 ---
 
 ## The Code Inspector Pro V3.5
 
 An advanced static code inspector, dead-code linter, AST parser, and executable compiler sandbox embedded directly inside your notebook:
 
-\\\`\\\`\\\`html
-\${CODE_INSPECTOR_HTML}
-\\\`\\\`\\\`
-\`;
+\`\`\`html
+${CODE_INSPECTOR_HTML}
+\`\`\`
+`;

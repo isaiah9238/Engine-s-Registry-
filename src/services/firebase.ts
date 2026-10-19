@@ -24,71 +24,46 @@ import {
   type AppCheck,
 } from 'firebase/app-check';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { resolvedFirebaseConfig } from '../config/firebaseConfig';
 
-// Dynamically resolve configuration from secrets & environment variables with static fallback
-const resolvedConfig = {
-  ...firebaseConfig,
-  apiKey: (typeof process !== 'undefined' && process.env?.FIREBASE_API_KEY) || firebaseConfig.apiKey,
-  projectId: (typeof process !== 'undefined' && process.env?.FIREBASE_PROJECT_ID) || firebaseConfig.projectId,
-  authDomain: (typeof process !== 'undefined' && process.env?.FIREBASE_AUTHDOMAIN) || firebaseConfig.authDomain,
-  storageBucket:
-    (typeof process !== 'undefined' && process.env?.FIREBASE_STORAGEBUCKET
-      ? (process.env.FIREBASE_STORAGEBUCKET.endsWith('.ap')
-          ? process.env.FIREBASE_STORAGEBUCKET + 'p'
-          : process.env.FIREBASE_STORAGEBUCKET)
-      : firebaseConfig.storageBucket),
-  messagingSenderId: (typeof process !== 'undefined' && process.env?.FIREBASE_MESSAGINGSENDER) || firebaseConfig.messagingSenderId,
-  appId: (typeof process !== 'undefined' && process.env?.FIREBASE_APPID) || firebaseConfig.appId,
-  firestoreDatabaseId: (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc',
-};
-
+const resolvedConfig = resolvedFirebaseConfig;
 const app = !getApps().length ? initializeApp(resolvedConfig) : getApp();
 
-// Initialize Firebase App Check with registered debug token and Dave's reCAPTCHA key
+// Initialize Firebase App Check only when an explicit debug token is provided
 export let appCheck: AppCheck | null = null;
-
-const recaptchaSiteKey =
-  (resolvedConfig as any).recaptchaSiteKey ||
-  (typeof process !== 'undefined' && process.env?.RECAPTCHA_SITE_KEY) ||
-  '6LeNrt4tAAAAANvI5Tjm3K-p3yzSDGlCvWiVGqRR';
 
 const appCheckDebugToken =
   (typeof process !== 'undefined' && process.env?.APPCHECK_TOKEN) || '';
 
-if (typeof window !== 'undefined' && (appCheckDebugToken || recaptchaSiteKey)) {
+if (typeof window !== 'undefined' && appCheckDebugToken) {
   try {
-    (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN =
-      appCheckDebugToken || (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN || true;
+    (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckDebugToken;
 
-    // Use CustomProvider with exchangeDebugToken in development/preview to guarantee valid attestation
-    const provider = appCheckDebugToken
-      ? new CustomProvider({
-          getToken: async () => {
-            try {
-              const res = await fetch(
-                `https://content-firebaseappcheck.googleapis.com/v1/projects/${resolvedConfig.projectId}/apps/${resolvedConfig.appId}:exchangeDebugToken?key=${resolvedConfig.apiKey}`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ debugToken: appCheckDebugToken }),
-                }
-              );
-              if (res.ok) {
-                const data = await res.json();
-                return {
-                  token: data.token,
-                  expireTimeMillis:
-                    Date.now() + (parseInt(data.ttl, 10) || 3600) * 1000,
-                };
-              }
-            } catch (err) {
-              console.warn('App Check debug token exchange notice:', err);
+    const provider = new CustomProvider({
+      getToken: async () => {
+        try {
+          const res = await fetch(
+            `https://content-firebaseappcheck.googleapis.com/v1/projects/${resolvedConfig.projectId}/apps/${resolvedConfig.appId}:exchangeDebugToken?key=${resolvedConfig.apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ debugToken: appCheckDebugToken }),
             }
-            return { token: '', expireTimeMillis: 0 };
-          },
-        })
-      : new ReCaptchaV3Provider(recaptchaSiteKey);
+          );
+          if (res.ok) {
+            const data = await res.json();
+            return {
+              token: data.token,
+              expireTimeMillis:
+                Date.now() + (parseInt(data.ttl, 10) || 3600) * 1000,
+            };
+          }
+        } catch (err) {
+          console.warn('App Check debug token exchange notice:', err);
+        }
+        return { token: '', expireTimeMillis: 0 };
+      },
+    });
 
     appCheck = initializeAppCheck(app, {
       provider,

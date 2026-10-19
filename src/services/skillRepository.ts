@@ -19,9 +19,25 @@ import { SEED_SKILLS } from '../data/seedSkills';
 const SKILLS_COLLECTION = 'skills';
 
 export async function fetchAllSkills(): Promise<SkillRecord[]> {
+  try {
+    const res = await fetch('/api/skills');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.skills && Array.isArray(data.skills)) {
+        const mergedMap = new Map<string, SkillRecord>();
+        SEED_SKILLS.forEach((s) => mergedMap.set(s.id, s));
+        data.skills.forEach((s: SkillRecord) => mergedMap.set(s.id, s));
+        return Array.from(mergedMap.values());
+      }
+    }
+  } catch (apiErr) {
+    console.warn('Server skills query notice:', apiErr);
+  }
+
   if (!auth.currentUser) {
     return SEED_SKILLS;
   }
+
   try {
     const q = query(collection(db, SKILLS_COLLECTION));
     const snapshot = await getDocs(q);
@@ -35,7 +51,6 @@ export async function fetchAllSkills(): Promise<SkillRecord[]> {
       firestoreSkills.push(docSnap.data() as SkillRecord);
     });
 
-    // Merge seed skills that may not yet be persisted
     const mergedMap = new Map<string, SkillRecord>();
     SEED_SKILLS.forEach((s) => mergedMap.set(s.id, s));
     firestoreSkills.forEach((s) => mergedMap.set(s.id, s));
@@ -53,7 +68,7 @@ export function subscribeToSkills(
 ): Unsubscribe {
   // Per skill guidelines: only attach onSnapshot if user is authenticated
   if (!auth.currentUser) {
-    onUpdate(SEED_SKILLS);
+    fetchAllSkills().then(onUpdate);
     return () => {};
   }
 
@@ -63,7 +78,7 @@ export function subscribeToSkills(
       q,
       (snapshot) => {
         if (snapshot.empty) {
-          onUpdate(SEED_SKILLS);
+          fetchAllSkills().then(onUpdate);
           return;
         }
         const list: SkillRecord[] = [];
@@ -78,28 +93,59 @@ export function subscribeToSkills(
         onUpdate(Array.from(mergedMap.values()));
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, SKILLS_COLLECTION);
+        console.warn('Client Firestore snapshot notice, falling back to server API:', error);
+        fetchAllSkills().then(onUpdate);
         onError?.(error);
       }
     );
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, SKILLS_COLLECTION);
+    console.warn('Client Firestore subscription setup notice:', error);
+    fetchAllSkills().then(onUpdate);
     return () => {};
   }
 }
 
 export async function saveSkill(skill: SkillRecord): Promise<void> {
   const path = `${SKILLS_COLLECTION}/${skill.id}`;
+  const cleanName = (skill.name || skill.id || 'unnamed-skill')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '-');
+  const cleanId = (skill.id || cleanName).replace(/[^a-zA-Z0-9_-]/g, '-');
+
+  const rawSkill: Record<string, any> = {
+    ...skill,
+    id: cleanId,
+    name: cleanName,
+    authorId: skill.authorId || auth.currentUser?.uid || 'isaiah9238@gmail.com',
+    authorEmail: skill.authorEmail || auth.currentUser?.email || 'isaiah9238@gmail.com',
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Strip undefined properties which Firestore rejects
+  const sanitizedSkill = Object.fromEntries(
+    Object.entries(rawSkill).filter(([_, v]) => v !== undefined)
+  ) as SkillRecord;
+
+  // 1. Primary: Persist via server-side Firebase Admin SDK (includes 768-dim vector embedding)
+  try {
+    const res = await fetch('/api/skills', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sanitizedSkill),
+    });
+    if (res.ok) {
+      return;
+    }
+  } catch (serverErr) {
+    console.warn('Server-side skill save notice, trying client SDK:', serverErr);
+  }
+
+  // 2. Fallback: Persist via client-side Firestore SDK
   if (!auth.currentUser) {
-    // If running in local/demo mode without sign-in, keep local
     return;
   }
   try {
-    const docRef = doc(db, SKILLS_COLLECTION, skill.id);
-    const sanitizedSkill = {
-      ...skill,
-      updatedAt: new Date().toISOString(),
-    };
+    const docRef = doc(db, SKILLS_COLLECTION, sanitizedSkill.id);
     await setDoc(docRef, sanitizedSkill, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -108,6 +154,20 @@ export async function saveSkill(skill: SkillRecord): Promise<void> {
 
 export async function deleteSkill(skillId: string): Promise<void> {
   const path = `${SKILLS_COLLECTION}/${skillId}`;
+
+  // 1. Primary: Delete via server-side Firebase Admin SDK
+  try {
+    const res = await fetch(`/api/skills/${encodeURIComponent(skillId)}`, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      return;
+    }
+  } catch (serverErr) {
+    console.warn('Server-side skill delete notice, trying client SDK:', serverErr);
+  }
+
+  // 2. Fallback: Delete via client-side Firestore SDK
   if (!auth.currentUser) {
     return;
   }

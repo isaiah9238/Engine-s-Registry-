@@ -1,84 +1,82 @@
-import React, { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
+import React, { useRef, useEffect } from 'react';
 import type { ToroidalMatrixState } from '../../types/toroidalMatrix';
+import { calculateTorusPoint, evaluateTorusColorAtPoint } from '../../utils/torusMath';
 
 interface TorusMeshNodeProps {
   readonly matrixState: ToroidalMatrixState;
+  readonly width?: number;
+  readonly height?: number;
 }
 
-const vertexShader = `
-  varying vec2 vUv;
-  varying vec3 vNormalVec;
+export const TorusMeshNode: React.FC<TorusMeshNodeProps> = ({
+  matrixState,
+  width = 400,
+  height = 300,
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  void main() {
-    vUv = uv;
-    vNormalVec = normalize(normalMatrix * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-const fragmentShader = `
-  uniform float uTime;
-  uniform float uSymmetry;
-  varying vec2 vUv;
-  varying vec3 vNormalVec;
+    let animationFrameId: number;
+    let epoch = matrixState.timeEpoch || 0;
 
-  void main() {
-    float u = vUv.x * 6.28318530718;
-    float v = vUv.y * 6.28318530718;
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
 
-    // 7-layer composite approximation:
-    // L4 symmetry harmonic modulation
-    float harmonic = sin(uSymmetry * u + uTime) * cos(uSymmetry * v);
-    
-    // Chrominance fields
-    float r = 0.5 + 0.5 * sin(u + harmonic);
-    float g = 0.5 + 0.5 * cos(v + harmonic);
-    float b = 0.5 + 0.5 * sin(u + v + uTime * 0.5);
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const scale = Math.min(width, height) / (2.5 * (matrixState.dimensions.majorRadius + matrixState.dimensions.minorRadius));
 
-    // L6 diffuse lighting calculation
-    vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-    float diff = max(dot(vNormalVec, lightDir), 0.2);
+      const uSteps = matrixState.dimensions.radialSegments || 24;
+      const vSteps = matrixState.dimensions.tubularSegments || 16;
 
-    gl_FragColor = vec4(vec3(r, g, b) * diff, 1.0);
-  }
-`;
+      for (let i = 0; i < uSteps; i++) {
+        const u = (i / uSteps) * 2 * Math.PI;
+        for (let j = 0; j < vSteps; j++) {
+          const v = (j / vSteps) * 2 * Math.PI;
+          const pt = calculateTorusPoint(u, v, matrixState.dimensions);
+          const color = evaluateTorusColorAtPoint(u, v, epoch);
 
-export const TorusMeshNode: React.FC<TorusMeshNodeProps> = ({ matrixState }) => {
-  const materialRef = useRef<THREE.ShaderMaterial>(null);
+          // Simple 3D perspective projection
+          const rotX = pt.x * Math.cos(epoch * 0.5) - pt.z * Math.sin(epoch * 0.5);
+          const rotZ = pt.x * Math.sin(epoch * 0.5) + pt.z * Math.cos(epoch * 0.5);
+          const rotY = pt.y;
 
-  const uniforms = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uSymmetry: { value: 8.0 },
-    }),
-    []
-  );
+          const projX = centerX + rotX * scale;
+          const projY = centerY + rotY * scale;
 
-  // Driven strictly by the render frame loop; zero React lifecycle overhead
-  useFrame((_, delta) => {
-    if (!materialRef.current || !matrixState.isDynamic) return;
-    materialRef.current.uniforms.uTime.value += delta;
-  });
+          ctx.fillStyle = `rgb(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})`;
+          ctx.beginPath();
+          ctx.arc(projX, projY, Math.max(1, (rotZ + 5) * 0.5), 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+
+      if (matrixState.isDynamic) {
+        epoch += 0.02;
+        animationFrameId = requestAnimationFrame(render);
+      }
+    };
+
+    render();
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [matrixState, width, height]);
 
   return (
-    <mesh>
-      <torusGeometry
-        args={[
-          matrixState.dimensions.majorRadius,
-          matrixState.dimensions.minorRadius,
-          matrixState.dimensions.radialSegments,
-          matrixState.dimensions.tubularSegments,
-        ]}
-      />
-      <shaderMaterial
-        ref={materialRef}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-        uniforms={uniforms}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
+    <canvas
+      ref={canvasRef}
+      width={width}
+      height={height}
+      className="rounded-xl border border-slate-800 bg-slate-950 shadow-inner"
+    />
   );
 };

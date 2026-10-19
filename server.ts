@@ -1,29 +1,92 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { initializeApp as initAdminApp, getApps as getAdminApps, getApp as getAdminApp, cert } from 'firebase-admin/app';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Prevent unhandled exceptions or rejections from terminating the dev server process
+process.on('uncaughtException', (err) => {
+  console.error('[Server] Uncaught exception (kept alive):', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason: any) => {
+  console.error('[Server] Unhandled rejection (kept alive):', reason?.message || reason);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Resolve Gemini API key from environment or secrets file
-let apiKey = process.env.GEMINI_API_KEY || '';
-try {
-  if (!apiKey && fs.existsSync('/app/.dev.env.json')) {
-    const devSecrets = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
-    apiKey = devSecrets.GEMINI_API_KEY || '';
+// Lazy-resolve Gemini API key from environment or secrets file
+let cachedAiClient: GoogleGenAI | null = null;
+function getAi(): GoogleGenAI {
+  if (cachedAiClient) return cachedAiClient;
+  let apiKey = process.env.GEMINI_API_KEY || '';
+  try {
+    if (!apiKey && fs.existsSync('/app/.dev.env.json')) {
+      const devSecrets = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
+      apiKey = devSecrets.GEMINI_API_KEY || '';
+    }
+  } catch {
+    // ignore
   }
-} catch {
-  // ignore
+  cachedAiClient = new GoogleGenAI({ apiKey: apiKey || 'placeholder-key' });
+  return cachedAiClient;
 }
 
-const ai = new GoogleGenAI({ apiKey });
+// Initialize Firebase Admin SDK with Service Account Key (idempotent)
+let adminDb: FirebaseFirestore.Firestore | null = null;
+let adminAuth: any = null;
+let adminAppInfo: { projectId?: string; clientEmail?: string; databaseId?: string } | null = null;
+
+function initFirebaseAdmin() {
+  if (adminDb) return;
+  try {
+    let saRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!saRaw && fs.existsSync('/app/.dev.env.json')) {
+      const devSecrets = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
+      saRaw = devSecrets.FIREBASE_SERVICE_ACCOUNT;
+    }
+
+    if (saRaw) {
+      const serviceAccount = typeof saRaw === 'string' ? JSON.parse(saRaw) : saRaw;
+      const targetDatabaseId =
+        process.env.FIRESTORE_DATABASE_ID || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc';
+
+      const adminApp =
+        getAdminApps().length === 0
+          ? initAdminApp({
+              credential: cert(serviceAccount),
+              projectId: serviceAccount.project_id || 'gen-lang-client-0573899362',
+              storageBucket:
+                process.env.FIREBASE_STORAGEBUCKET || 'gen-lang-client-0573899362.firebasestorage.app',
+            })
+          : getAdminApp();
+
+      adminDb = getAdminFirestore(adminApp, targetDatabaseId);
+      adminAuth = getAdminAuth(adminApp);
+      adminAppInfo = {
+        projectId: serviceAccount.project_id,
+        clientEmail: serviceAccount.client_email,
+        databaseId: targetDatabaseId,
+      };
+      console.log(
+        `[Firebase Admin] Authenticated with Service Account (${serviceAccount.client_email}) for database ${targetDatabaseId}`
+      );
+    }
+  } catch (adminErr: any) {
+    console.warn('[Firebase Admin] Notice during initialization:', adminErr?.message || adminErr);
+  }
+}
+
+initFirebaseAdmin();
 
 async function startServer() {
   const app = express();
-  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const port = 3000;
 
   app.use(express.json({ limit: '10mb' }));
 
@@ -36,7 +99,7 @@ async function startServer() {
         return;
       }
 
-      const response = await ai.models.embedContent({
+      const response = await getAi().models.embedContent({
         model: 'gemini-embedding-001',
         contents: text.slice(0, 8000),
         config: {
@@ -93,7 +156,7 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
       let response;
       let usedModel = 'gemini-3.1-flash-lite';
       try {
-        response = await ai.models.generateContent({
+        response = await getAi().models.generateContent({
           model: 'gemini-3.1-flash-lite',
           contents,
           config: {
@@ -104,7 +167,7 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
       } catch (primaryErr: any) {
         console.warn('Primary model gemini-3.1-flash-lite fallback notice:', primaryErr?.message || primaryErr);
         usedModel = 'gemini-3.8-flash';
-        response = await ai.models.generateContent({
+        response = await getAi().models.generateContent({
           model: 'gemini-3.8-flash',
           contents,
           config: {
@@ -127,13 +190,110 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
     }
   });
 
+  // API Route: Server-Side Firestore Skills Management (Powered by Firebase Admin)
+  app.get('/api/skills', async (_req: Request, res: Response) => {
+    try {
+      initFirebaseAdmin();
+      if (!adminDb) {
+        res.status(503).json({ error: 'Firebase Admin SDK not initialized' });
+        return;
+      }
+      const snapshot = await adminDb.collection('skills').get();
+      const skills = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      res.json({ skills, count: skills.length });
+    } catch (err: any) {
+      console.error('Failed to query skills via Firebase Admin:', err);
+      res.status(500).json({ error: err?.message || 'Failed to fetch skills' });
+    }
+  });
+
+  app.post('/api/skills', async (req: Request, res: Response) => {
+    try {
+      initFirebaseAdmin();
+      if (!adminDb) {
+        res.status(503).json({ error: 'Firebase Admin SDK not initialized' });
+        return;
+      }
+      const skillData = req.body;
+      if (!skillData || !skillData.id) {
+        res.status(400).json({ error: 'Valid skill object with id is required' });
+        return;
+      }
+
+      // Automatically generate 768-dim vector embedding if not provided
+      if (!skillData.embedding || !Array.isArray(skillData.embedding)) {
+        try {
+          const semanticText = `${skillData.name} ${skillData.title} ${skillData.description} ${skillData.category}`;
+          const embedRes = await getAi().models.embedContent({
+            model: 'gemini-embedding-001',
+            contents: semanticText.slice(0, 8000),
+            config: { outputDimensionality: 768 },
+          });
+          skillData.embedding = embedRes.embeddings?.[0]?.values || [];
+        } catch (embedErr) {
+          console.warn('Embedding generation notice during skill save:', embedErr);
+        }
+      }
+
+      skillData.updatedAt = new Date().toISOString();
+      await adminDb.collection('skills').doc(skillData.id).set(skillData, { merge: true });
+
+      res.json({
+        success: true,
+        skillId: skillData.id,
+        embedded: Boolean(skillData.embedding?.length),
+        savedAt: skillData.updatedAt,
+      });
+    } catch (err: any) {
+      console.error('Failed to save skill via Firebase Admin:', err);
+      res.status(500).json({ error: err?.message || 'Failed to save skill' });
+    }
+  });
+
+  app.delete('/api/skills/:id', async (req: Request, res: Response) => {
+    try {
+      initFirebaseAdmin();
+      if (!adminDb) {
+        res.status(503).json({ error: 'Firebase Admin SDK not initialized' });
+        return;
+      }
+      const skillId = req.params.id;
+      if (!skillId) {
+        res.status(400).json({ error: 'Skill ID is required' });
+        return;
+      }
+      await adminDb.collection('skills').doc(skillId).delete();
+      res.json({ success: true, deletedId: skillId });
+    } catch (err: any) {
+      console.error('Failed to delete skill via Firebase Admin:', err);
+      res.status(500).json({ error: err?.message || 'Failed to delete skill' });
+    }
+  });
+
   // Health and System Diagnostics
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({
       status: 'operational',
-      capabilities: ['Vector(768)', 'AgentMemory', 'SemanticToolSelection', 'CloudStorage'],
+      capabilities: [
+        'Vector(768)',
+        'AgentMemory',
+        'SemanticToolSelection',
+        'CloudStorage',
+        'FirebaseAdmin',
+      ],
       vectorDimensions: 768,
+      firebaseAdmin: {
+        initialized: Boolean(adminDb),
+        projectId: adminAppInfo?.projectId || null,
+        serviceAccountEmail: adminAppInfo?.clientEmail || null,
+        targetDatabase: adminAppInfo?.databaseId || null,
+      },
     });
+  });
+
+  // Bind port 3000 immediately so pre-warming and health checks succeed without waiting for Vite initialization
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`Agent Engine Full-Stack Server listening on http://0.0.0.0:${port}`);
   });
 
   // Mount Vite middlewares in development or serve static in production
@@ -143,16 +303,20 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   } else {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
+    const vitePromise = createViteServer({
+      server: { middlewareMode: true, hmr: false, watch: null },
       appType: 'spa',
     });
-    app.use(vite.middlewares);
-  }
 
-  app.listen(port, '0.0.0.0', () => {
-    console.log(`Agent Engine Full-Stack Server listening on http://0.0.0.0:${port}`);
-  });
+    app.use(async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const vite = await vitePromise;
+        vite.middlewares(req, res, next);
+      } catch (err) {
+        next(err);
+      }
+    });
+  }
 }
 
 startServer();

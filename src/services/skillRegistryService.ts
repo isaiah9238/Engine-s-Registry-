@@ -138,11 +138,6 @@ export class SkillRegistryService {
    * Retrieves a single skill document by ID, checking local cache before remote query.
    */
   public async getSkillById(skillId: string): Promise<AgentSkillDocument | null> {
-    const cached = getCachedSkill(skillId);
-    if (cached) {
-      return cached;
-    }
-
     const docRef = doc(this.getCollectionRef(), skillId);
     const docSnapshot = await getDoc(docRef);
 
@@ -151,7 +146,9 @@ export class SkillRegistryService {
     }
 
     const skill = docSnapshot.data();
-    setCachedSkill(skill);
+    if (skill) {
+      setCachedSkill(skill as any);
+    }
     return skill;
   }
 
@@ -173,7 +170,7 @@ export class SkillRegistryService {
     const querySnapshot = await getDocs(q);
     const skills = querySnapshot.docs.map((docSnap) => docSnap.data());
 
-    skills.forEach((skill) => setCachedSkill(skill));
+    skills.forEach((skill) => setCachedSkill(skill as any));
     return skills;
   }
 
@@ -192,7 +189,7 @@ export class SkillRegistryService {
     const querySnapshot = await getDocs(q);
     const skills = querySnapshot.docs.map((docSnap) => docSnap.data());
 
-    skills.forEach((skill) => setCachedSkill(skill));
+    skills.forEach((skill) => setCachedSkill(skill as any));
     return skills;
   }
 
@@ -202,7 +199,7 @@ export class SkillRegistryService {
   public async saveSkill(skill: AgentSkillDocument): Promise<void> {
     const docRef = doc(this.getCollectionRef(), skill.id);
     await setDoc(docRef, skill);
-    setCachedSkill(skill);
+    setCachedSkill(skill as any);
   }
 
   /**
@@ -214,5 +211,4 @@ export class SkillRegistryService {
   }
 }
 
-export const skillRegistryService = new SkillRegistryService();
 export const skillRegistryService = new SkillRegistryService();
