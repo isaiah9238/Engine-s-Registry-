@@ -1,0 +1,78 @@
+C:\USERS\ISAIAH9238\SKILLREGISTRY\SRC
+│   App.tsx
+│   index.css
+│   main.tsx
+│   
+├───components
+│   │   ConfirmationModal.tsx
+│   │   DecisionMatcherModal.tsx
+│   │   DriveBrowserModal.tsx
+│   │   GeminiChatBot.tsx
+│   │   MindMapStudio.tsx
+│   │   Navbar.tsx
+│   │   SkillCard.tsx
+│   │   SkillDetailModal.tsx
+│   │   SkillEditorModal.tsx
+│   │   VectorSearchStudio.tsx
+│   │   WorkspaceExportModal.tsx
+│   │   
+│   └───visualizers
+│           TorusMeshNode.tsx
+│           
+├───data
+│       codeInspectorPro.ts
+│       mindMapData.ts
+│       seedMemories.ts
+│       seedSkills.ts
+│       writeSkillVector.ts
+│       
+├───pages
+│       PrivacyPolicy.tsx
+│       TermsOfService.tsx
+│       
+├───services
+│       agentMemoryRepository.ts
+│       executionTraceService.ts
+│       firebase.ts
+│       googleDrive.ts
+│       googleGmail.ts
+│       localRegistryCache.ts
+│       skillParser.ts
+│       skillRegistryService.ts
+│       skillRepository.ts
+│       storageService.ts
+│       vectorSearch.ts
+│       
+├───types
+│       agentMemory.ts
+│       skill.ts
+│       
+└───utils
+        torusMath.ts
+
+PS C:\Users\isaiah9238\skillRegistry> tree /f skills
+Folder PATH listing for volume OS
+Volume serial number is 00000080 5C4E:EDC8
+C:\USERS\ISAIAH9238\SKILLREGISTRY\SKILLS
+├───architecture-file-placement-skill
+│       guidelines.md
+│       
+├───code-inspector-skill
+├───custom-security-scanner-skill
+│       custom-security-scanner.SKILL.md
+│       script.ts
+│       
+├───orical-matrix-skill
+│       guidelines.md
+│       package.json
+│       
+└───write-skill
+        guidelines.md
+        IngestionDocumentPayload.md
+        manifest.json
+        script.js
+        
+
+C:\USERS\ISAIAH9238\SKILLREGISTRY\SCRIPTS
+    seedCustomSecurityScanner.ts
+    seedWriteSkill.ts

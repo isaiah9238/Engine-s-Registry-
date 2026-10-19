@@ -4,18 +4,21 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "seed:write-skill": "tsx scripts/seedWriteSkill.ts",
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true }); try { fs.unlinkSync('server.js'); } catch {}\"",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "seed:write-skill": "tsx scripts/seedWriteSkill.ts",
+    "seed:security": "tsx scripts/seedCustomSecurityScanner.ts",
+    "seed:memory": "tsx scripts/seedMultiTierAgentMemory.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
+    "better-sqlite3": "^11.8.1",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^12.19.0",
@@ -33,16 +36,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
     "firebase-admin": "^14.5.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2"
-  },
-  "onlyBuiltDependencies": {
-    "@firebase/util": true,
-    "@google/genai": true,
-    "esbuild": true,
-    "protobufjs": true
-  }
-}
+  } 

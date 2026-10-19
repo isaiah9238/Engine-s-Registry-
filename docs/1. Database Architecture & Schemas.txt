@@ -1,0 +1,53 @@
+1. Database Architecture & Schemas
+A. agent_memories/ (Vector-Indexed Cognitive Store)
+Path: /agent_memories/{memoryId}
+Document Structure:
+code
+Ts
+{
+  agentId: string;
+  content: string;
+  embedding: Vector(768); // 768-dimensional float vector
+  category: "semantic" | "episodic" | "procedural";
+  updatedAt: Timestamp; // ISO / server timestamp
+}
+Security Rules (firestore.rules):
+Validates agentId, content boundary (
+ chars), and strict enum check: ['semantic', 'episodic', 'procedural'].
+Deployed to Cloud Firestore database ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc.
+B. skills/ (Vector-Indexed Tool & Runtime Specification)
+Path: /skills/{skillId}
+Extended Structure:
+code
+Ts
+{
+  name: string;
+  version: string;
+  description: string;
+  embedding: Vector(768);           // Enables dynamic semantic tool selection
+  parametersSchema: Map;            // Tool call parameter schemas & signatures
+  bundleStoragePath: string;        // gs://gen-lang-client-0573899362.firebasestorage.app/skills/{skillId}/
+}
+Blueprint Synchronization: Updated firebase-blueprint.json with entity schemas for AgentMemory and the updated Skill vector/storage properties.
+2. Cloud Storage (Firebase Storage) Integration
+Storage Structure:
+code
+Code
+Firebase Storage:
+└── /skills/{skillId}/
+    ├── guidelines.md          (Operational instructions & frontmatter)
+    └── runtime.wasm / script.js (Executable runtime bundle)
+Service (src/services/storageService.ts):
+Implemented uploadSkillBundle(...) and getSkillBundle(...) interacting with Firebase Storage.
+Generates canonical Cloud Storage URIs (gs://${storageBucket}/skills/{skillId}/).
+3. Server-Side 768-Dimensional Vector Embeddings
+Full-Stack Server (server.ts):
+Mounted Express endpoint POST /api/embed using the official @google/genai SDK with outputDimensionality: 768.
+Client vector service (src/services/vectorSearch.ts) supports Cosine Similarity K-NN ranking for:
+Dynamic Semantic Tool Selection: Matches agent execution intents against the 768-dim skill vector space.
+Memory Vector Recall: Retrieves semantic, episodic, and procedural records based on query similarity.
+4. Interactive Studio & User Interface
+"Vector & Memories" Studio View (src/components/VectorSearchStudio.tsx):
+Dynamic Semantic Tool Selection: Enter an execution intent (e.g., "Audit cryptographic key vaults and enforce zero-trust ABAC"), generate a live 768-dim vector, and inspect ranked skill matches with similarity percentages, parameter schemas, and Cloud Storage bundle paths.
+Cognitive Agent Memories: Filter memories by semantic, episodic, or procedural. Use the "Record Agent Memory" modal to embed new knowledge into Vector(768) on the fly and persist it to Firestore.
+Cloud Storage Bundle Inspector: Select any skill to view, edit, and upload its guidelines.md and runtime.wasm / script.js directly to Firebase Storage.

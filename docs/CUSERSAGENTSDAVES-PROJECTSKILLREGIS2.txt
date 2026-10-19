@@ -1,0 +1,141 @@
+C:\USERS\AGENTS\DAVES-PROJECT\SKILLREGISTRY\SKILLS
+├───code-inspector-skill
+├───custom-security-scanner-skill
+│       custom-security-scanner.SKILL.md
+│       
+├───orical-matrix-skill
+└───write-skill
+        guidelines.md
+        manifest.json
+        script.js
+
+PS C:\Users\Agents\daves-project\skillRegistry> tree /f src
+Folder PATH listing for volume OS
+Volume serial number is 00000080 5C4E:EDC8
+C:\USERS\AGENTS\DAVES-PROJECT\SKILLREGISTRY\SRC
+│   App.tsx
+│   index.css
+│   main.tsx
+│   
+├───components
+│       ConfirmationModal.tsx
+│       DecisionMatcherModal.tsx
+│       DriveBrowserModal.tsx
+│       GeminiChatBot.tsx
+│       MindMapStudio.tsx
+│       Navbar.tsx
+│       SkillCard.tsx
+│       SkillDetailModal.tsx
+│       SkillEditorModal.tsx
+│       VectorSearchStudio.tsx
+│       WorkspaceExportModal.tsx
+│       
+├───data
+│       mindMapData.ts
+│       seedMemories.ts
+│       seedSkills.ts
+│       writeSkillVector.ts
+│       
+├───pages
+│       PrivacyPolicy.tsx
+│       TermsOfService.tsx
+│       
+├───services
+│       agentMemoryRepository.ts
+│       executionTraceService.ts
+│       firebase.ts
+│       googleDrive.ts
+│       googleGmail.ts
+│       localRegistryCache.ts
+│       skillParser.ts
+│       skillRepository.ts
+│       storageService.ts
+│       vectorSearch.ts
+│       
+└───types
+        agentMemory.ts
+        skill.ts
+
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "start": "tsx server.ts",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true }); try { fs.unlinkSync('server.js'); } catch {}\"",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "firebase": "^12.19.0",
+    "js-yaml": "^5.4.2",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "vite": "^8.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "autoprefixer": "^10.4.21",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.21.0",
+    "typescript": "^7.0.2"
+  },
+  "onlyBuiltDependencies": {
+    "@firebase/util": true,
+    "@google/genai": true,
+    "esbuild": true,
+    "protobufjs": true
+  }
+}
+                  ┌──────────────────────────────────────────────┐
+                  │                 USER PROMPT                                      │
+                  └──────────────────────┬───────────────────────┘
+                                         │
+                                         ▼
+                     agent-task-router (Decision Matcher)
+             Calculates cosine similarity against 768-dim embeddings
+                                         │
+    ┌─────────────────────────────┼─────────────────────────────┐
+           ▼                             ▼                             ▼
+        auth-vault-eval         neuromorphic-energy-optimizer          write-skill
+      (Security Audit MCP)           (Physical / Math Engine)      (Meta-Skill Architect)
+           │                             │                             │
+    └─────────────────────────────┼─────────────────────────────┘
+                                         │
+                                         ▼
+                                MindMapStudio UI
+                       Interactive visualization of:
+              • Core Template Structure (YAML + Markdown)
+              • Comprehensive Authoring Schema (Parameters, Manifest)
+              • Progressive Disclosure & Zero-Pill Rules
+              • Standard Architectures (Templates 1 to 4)
+                                         │
+                                         ▼
+                             Storage & Database Layer
+               • Cloud Firestore: Metadata & vector indexes
+               • Firebase Storage: Bundled guidelines.md & script.js
+               • Google Workspace: Drive backup & Gmail digests
+
+
+generateSkillMarkdown(params)
+
+a tool-calling schemas, API endpoint, or regex boundaries.
+
+A function in script.js or a workflow step in guidelines.md that produces the exact summaryJson block (with routingKeywords, triggerPreconditions, and evaluationRubric) so new skills can be indexed immediately. 
+
+A template Dispatcher

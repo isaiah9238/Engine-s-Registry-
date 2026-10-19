@@ -1,0 +1,34 @@
+// 1. Safe ID check (matching your name regex style)
+function isValidId(id) {
+  return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+}
+
+// 2. Safe Get Rule (using .get() so missing fields don't throw)
+allow get: if isValidId(skillId) && (
+  resource != null && (
+    resource.data.get('isPublic', false) == true ||
+    resource.data.get('status', '') == 'published' ||
+    (isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()))
+  )
+);
+
+// 3. Safe Update Rule (safely compares createdAt even if null/omitted)
+allow update: if isSignedIn()
+  && isValidId(skillId)
+  && (isAdmin() || (existing().authorId == request.auth.uid && incoming().authorId == existing().authorId))
+  && incoming().get('createdAt', null) == existing().get('createdAt', null)
+  && isValidSkill(incoming());
+
+
+
+# 1. Remove the standalone pnpm bin folder
+Remove-Item -LiteralPath "C:\Users\isaiah9238\AppData\Local\pnpm" -Recurse -Force -ErrorAction Continue
+
+# 2. Target each file in AppData\Roaming\npm explicitly
+Remove-Item -LiteralPath "C:\Users\isaiah9238\AppData\Roaming\npm\pnpm.ps1" -Force -ErrorAction Continue
+Remove-Item -LiteralPath "C:\Users\isaiah9238\AppData\Roaming\npm\pnpm.cmd" -Force -ErrorAction Continue
+Remove-Item -LiteralPath "C:\Users\isaiah9238\AppData\Roaming\npm\pnpm" -Force -ErrorAction Continue
+
+# 3. Remove the problematic .ps1 and extensionless files from nvm4w
+Remove-Item -LiteralPath "C:\nvm4w\nodejs\pnpm.ps1" -Force -ErrorAction Continue
+Remove-Item -LiteralPath "C:\nvm4w\nodejs\pnpm" -Force -ErrorAction Continue

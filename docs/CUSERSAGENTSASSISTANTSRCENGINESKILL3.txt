@@ -1,0 +1,44 @@
+C:\USERS\AGENTS\ASSISTANT\SRC\ENGINE\SKILLS
+│   index.ts
+│   skillRegistry.ts
+│   
+└───write-skill
+    │   guidelines.md
+    │   
+    ├───references
+    └───scripts
+            script.js
+            seedWriteSkill.ts
+
+
+src/
+├── data/
+│   ├── seedSkills.ts         <-- Where write-skill belongs as a default/seeded skill
+│   ├── writeSkillVector.ts   <-- Where the 768-dim float array vector belongs
+│   └── seedMemories.ts
+├── services/
+│   ├── skillParser.ts        <-- Needs to unpack stringified manifest fields
+│   ├── skillRepository.ts    <-- Firestore CRUD operations
+│   └── vectorSearch.ts       <-- Cosine similarity & decision matching
+└── components/
+    ├── DecisionMatcherModal.tsx
+    ├── SkillDetailModal.tsx
+    └── VectorSearchStudio.tsx
+
+Whenever you are ready, fill in the authoring form with the init -y details:
+
+skillName: workspace-scaffold-init
+
+Human Title: Autonomous Workspace & Environment Initializer
+
+Category: workflow-automation
+
+Clearance: internal
+
+Runtime: in_process
+
+Mission & Operational Boundaries:
+
+Deterministically scaffolds and initializes local project workspaces using automated default flags (-y, --yes). Configures runtime manifests (package.json, .npmrc, tsconfig.json, .gitignore), enforces package manager locking (pnpm/npm), and eliminates interactive prompt hangs in autonomous agent loops.
+
+Let me know once you test the validator on that one or if you'd like to tweak any of its parameters before saving it down to skills/ alongside the security scanner.
