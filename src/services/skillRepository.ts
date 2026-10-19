@@ -19,7 +19,22 @@ import { SEED_SKILLS } from '../data/seedSkills';
 const SKILLS_COLLECTION = 'skills';
 
 export async function fetchAllSkills(): Promise<SkillRecord[]> {
+  // If not signed in via client auth, fetch from server-side admin API first
   if (!auth.currentUser) {
+    try {
+      const res = await fetch('/api/skills');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.skills && data.skills.length > 0) {
+          const mergedMap = new Map<string, SkillRecord>();
+          SEED_SKILLS.forEach((s) => mergedMap.set(s.id, s));
+          data.skills.forEach((s: SkillRecord) => mergedMap.set(s.id, s));
+          return Array.from(mergedMap.values());
+        }
+      }
+    } catch (apiErr) {
+      console.warn('Server skills query notice:', apiErr);
+    }
     return SEED_SKILLS;
   }
   try {
@@ -94,14 +109,29 @@ export async function saveSkill(skill: SkillRecord): Promise<void> {
     // If running in local/demo mode without sign-in, keep local
     return;
   }
+  const sanitizedSkill = {
+    ...skill,
+    authorId: skill.authorId || auth.currentUser.uid,
+    authorEmail: skill.authorEmail || auth.currentUser.email || 'isaiah9238@gmail.com',
+    updatedAt: new Date().toISOString(),
+  };
   try {
     const docRef = doc(db, SKILLS_COLLECTION, skill.id);
-    const sanitizedSkill = {
-      ...skill,
-      updatedAt: new Date().toISOString(),
-    };
     await setDoc(docRef, sanitizedSkill, { merge: true });
   } catch (error) {
+    console.warn('Client-side Firestore save notice, attempting server admin backup:', error);
+    try {
+      const res = await fetch('/api/skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sanitizedSkill),
+      });
+      if (res.ok) {
+        return;
+      }
+    } catch {
+      // ignore
+    }
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }

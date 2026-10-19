@@ -182,3 +182,6 @@ export async function evictExpiredCache(ttlMs = DEFAULT_TTL_MS): Promise<number>
 
   return count;
 }
+
+export const setCachedSkill = cacheSkillLocally;
+

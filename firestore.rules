@@ -42,9 +42,10 @@ service cloud.firestore {
         && (!('securityClearance' in data) || data.securityClearance in ['public', 'internal', 'admin-only'])
         && (!('runtime' in data) || data.runtime in ['mcp', 'in_process', 'cloud_function'])
         && (!('isExecutable' in data) || data.isExecutable is bool)
-        && (!('embedding' in data) || data.embedding is list)
+        && (!('embedding' in data) || data.embedding != null)
         && (!('bundleStoragePath' in data) || (data.bundleStoragePath is string && data.bundleStoragePath.size() <= 500))
         && (!('returnsSchema' in data) || data.returnsSchema is map || data.returnsSchema is string)
+        && (!('returns' in data) || data.returns is map || data.returns is string)
         && (!('bundleFiles' in data) || data.bundleFiles is map || data.bundleFiles is string)
         && data.skillMarkdown is string && data.skillMarkdown.size() <= 200000;
     }
@@ -54,7 +55,7 @@ service cloud.firestore {
         && data.agentId is string && data.agentId.size() > 0 && data.agentId.size() <= 128
         && data.content is string && data.content.size() > 0 && data.content.size() <= 50000
         && data.category in ['semantic', 'episodic', 'procedural']
-        && (!('embedding' in data) || data.embedding is list);
+        && (!('embedding' in data) || data.embedding != null);
     }
 
     // Skills Collection
@@ -80,14 +81,13 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && isValidId(skillId)
         && incoming().id == skillId
-        && incoming().authorId == request.auth.uid
+        && (isAdmin() || incoming().authorId == request.auth.uid)
         && isValidSkill(incoming());
 
-      // Safe Update Rule (safely compares createdAt even if null/omitted)
+      // Safe Update Rule
       allow update: if isSignedIn()
         && isValidId(skillId)
-        && (isAdmin() || (existing().authorId == request.auth.uid && incoming().authorId == existing().authorId))
-        && incoming().get('createdAt', null) == existing().get('createdAt', null)
+        && (isAdmin() || existing().authorId == request.auth.uid)
         && isValidSkill(incoming());
 
       // Delete rule

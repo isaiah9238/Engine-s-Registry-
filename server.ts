@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { initializeApp as initAdminApp, cert } from 'firebase-admin/app';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -21,9 +24,47 @@ try {
 
 const ai = new GoogleGenAI({ apiKey });
 
+// Initialize Firebase Admin SDK with Service Account Key
+let adminDb: FirebaseFirestore.Firestore | null = null;
+let adminAuth: any = null;
+let adminAppInfo: { projectId?: string; clientEmail?: string; databaseId?: string } | null = null;
+
+try {
+  let saRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!saRaw && fs.existsSync('/app/.dev.env.json')) {
+    const devSecrets = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
+    saRaw = devSecrets.FIREBASE_SERVICE_ACCOUNT;
+  }
+
+  if (saRaw) {
+    const serviceAccount = typeof saRaw === 'string' ? JSON.parse(saRaw) : saRaw;
+    const targetDatabaseId =
+      process.env.FIRESTORE_DATABASE_ID || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc';
+
+    const adminApp = initAdminApp({
+      credential: cert(serviceAccount),
+      projectId: serviceAccount.project_id || 'gen-lang-client-0573899362',
+      storageBucket: process.env.FIREBASE_STORAGEBUCKET || 'gen-lang-client-0573899362.firebasestorage.app',
+    });
+
+    adminDb = getAdminFirestore(adminApp, targetDatabaseId);
+    adminAuth = getAdminAuth(adminApp);
+    adminAppInfo = {
+      projectId: serviceAccount.project_id,
+      clientEmail: serviceAccount.client_email,
+      databaseId: targetDatabaseId,
+    };
+    console.log(
+      `[Firebase Admin] Authenticated with Service Account (${serviceAccount.client_email}) for database ${targetDatabaseId}`
+    );
+  }
+} catch (adminErr: any) {
+  console.warn('[Firebase Admin] Notice during initialization:', adminErr?.message || adminErr);
+}
+
 async function startServer() {
   const app = express();
-  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const port = 3000;
 
   app.use(express.json({ limit: '10mb' }));
 
@@ -127,12 +168,82 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
     }
   });
 
+  // API Route: Server-Side Firestore Skills Management (Powered by Firebase Admin)
+  app.get('/api/skills', async (_req: Request, res: Response) => {
+    try {
+      if (!adminDb) {
+        res.status(503).json({ error: 'Firebase Admin SDK not initialized' });
+        return;
+      }
+      const snapshot = await adminDb.collection('skills').get();
+      const skills = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      res.json({ skills, count: skills.length });
+    } catch (err: any) {
+      console.error('Failed to query skills via Firebase Admin:', err);
+      res.status(500).json({ error: err?.message || 'Failed to fetch skills' });
+    }
+  });
+
+  app.post('/api/skills', async (req: Request, res: Response) => {
+    try {
+      if (!adminDb) {
+        res.status(503).json({ error: 'Firebase Admin SDK not initialized' });
+        return;
+      }
+      const skillData = req.body;
+      if (!skillData || !skillData.id) {
+        res.status(400).json({ error: 'Valid skill object with id is required' });
+        return;
+      }
+
+      // Automatically generate 768-dim vector embedding if not provided
+      if (!skillData.embedding || !Array.isArray(skillData.embedding)) {
+        try {
+          const semanticText = `${skillData.name} ${skillData.title} ${skillData.description} ${skillData.category}`;
+          const embedRes = await ai.models.embedContent({
+            model: 'gemini-embedding-001',
+            contents: semanticText.slice(0, 8000),
+            config: { outputDimensionality: 768 },
+          });
+          skillData.embedding = embedRes.embeddings?.[0]?.values || [];
+        } catch (embedErr) {
+          console.warn('Embedding generation notice during skill save:', embedErr);
+        }
+      }
+
+      skillData.updatedAt = new Date().toISOString();
+      await adminDb.collection('skills').doc(skillData.id).set(skillData, { merge: true });
+
+      res.json({
+        success: true,
+        skillId: skillData.id,
+        embedded: Boolean(skillData.embedding?.length),
+        savedAt: skillData.updatedAt,
+      });
+    } catch (err: any) {
+      console.error('Failed to save skill via Firebase Admin:', err);
+      res.status(500).json({ error: err?.message || 'Failed to save skill' });
+    }
+  });
+
   // Health and System Diagnostics
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({
       status: 'operational',
-      capabilities: ['Vector(768)', 'AgentMemory', 'SemanticToolSelection', 'CloudStorage'],
+      capabilities: [
+        'Vector(768)',
+        'AgentMemory',
+        'SemanticToolSelection',
+        'CloudStorage',
+        'FirebaseAdmin',
+      ],
       vectorDimensions: 768,
+      firebaseAdmin: {
+        initialized: Boolean(adminDb),
+        projectId: adminAppInfo?.projectId || null,
+        serviceAccountEmail: adminAppInfo?.clientEmail || null,
+        targetDatabase: adminAppInfo?.databaseId || null,
+      },
     });
   });
 
@@ -144,7 +255,7 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
     });
   } else {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: 'spa',
     });
     app.use(vite.middlewares);

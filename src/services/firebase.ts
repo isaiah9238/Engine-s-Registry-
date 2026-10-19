@@ -24,25 +24,9 @@ import {
   type AppCheck,
 } from 'firebase/app-check';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { resolvedFirebaseConfig } from '../config/firebaseConfig';
 
-// Dynamically resolve configuration from secrets & environment variables with static fallback
-const resolvedConfig = {
-  ...firebaseConfig,
-  apiKey: (typeof process !== 'undefined' && process.env?.FIREBASE_API_KEY) || firebaseConfig.apiKey,
-  projectId: (typeof process !== 'undefined' && process.env?.FIREBASE_PROJECT_ID) || firebaseConfig.projectId,
-  authDomain: (typeof process !== 'undefined' && process.env?.FIREBASE_AUTHDOMAIN) || firebaseConfig.authDomain,
-  storageBucket:
-    (typeof process !== 'undefined' && process.env?.FIREBASE_STORAGEBUCKET
-      ? (process.env.FIREBASE_STORAGEBUCKET.endsWith('.ap')
-          ? process.env.FIREBASE_STORAGEBUCKET + 'p'
-          : process.env.FIREBASE_STORAGEBUCKET)
-      : firebaseConfig.storageBucket),
-  messagingSenderId: (typeof process !== 'undefined' && process.env?.FIREBASE_MESSAGINGSENDER) || firebaseConfig.messagingSenderId,
-  appId: (typeof process !== 'undefined' && process.env?.FIREBASE_APPID) || firebaseConfig.appId,
-  firestoreDatabaseId: (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc',
-};
-
+const resolvedConfig = resolvedFirebaseConfig;
 const app = !getApps().length ? initializeApp(resolvedConfig) : getApp();
 
 // Initialize Firebase App Check with registered debug token and Dave's reCAPTCHA key

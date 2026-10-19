@@ -200,3 +200,39 @@ export interface SkillMatchResult {
   runtime?: SkillRuntime;
   securityClearance?: SecurityClearance;
 }
+
+export type SkillCategory = StudioAlchemistCategory | string;
+export type SkillParameterDeclaration = SkillParameter;
+
+export interface AgentSkillDocument {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  category: SkillCategory;
+  version: string;
+  status: SkillStatus;
+  isPublic: boolean;
+  authorId: string;
+  authorEmail: string;
+  securityClearance?: SecurityClearance;
+  isExecutable: boolean;
+  runtime?: SkillRuntime;
+  sourceReferences?: string[];
+  parametersSchema?: Record<string, any>;
+  bundleStoragePath?: string;
+  bundleFiles?: {
+    guidelinesMd?: string;
+    runtimeScript?: string;
+    runtimeFilename?: string;
+  };
+  summaryJson?: string;
+  parameters?: SkillParameterDeclaration[] | string;
+  examples?: SkillExample[] | string;
+  references?: SkillReference[] | string;
+  dependencies?: string[] | string;
+  codeFiles?: Record<string, { filename: string; language: string; content: string }> | string;
+  createdAt: string;
+  updatedAt: string;
+}
+
