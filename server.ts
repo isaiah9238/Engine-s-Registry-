@@ -270,6 +270,58 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
     }
   });
 
+  // API Routes: Skill Version Snapshots Subcollection Management
+  app.get('/api/skills/:id/versions', async (req: Request, res: Response) => {
+    try {
+      initFirebaseAdmin();
+      if (!adminDb) {
+        res.status(503).json({ error: 'Firebase Admin SDK not initialized' });
+        return;
+      }
+      const skillId = req.params.id;
+      const snapshot = await adminDb
+        .collection('skills')
+        .doc(skillId)
+        .collection('versions')
+        .orderBy('createdAt', 'desc')
+        .get();
+
+      const versions = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      res.json({ versions, count: versions.length });
+    } catch (err: any) {
+      console.warn('Notice querying skill versions via Firebase Admin:', err?.message || err);
+      res.json({ versions: [], count: 0 });
+    }
+  });
+
+  app.post('/api/skills/:id/versions', async (req: Request, res: Response) => {
+    try {
+      initFirebaseAdmin();
+      if (!adminDb) {
+        res.status(503).json({ error: 'Firebase Admin SDK not initialized' });
+        return;
+      }
+      const skillId = req.params.id;
+      const versionData = req.body;
+      if (!versionData || !versionData.id) {
+        res.status(400).json({ error: 'Valid version snapshot object with id is required' });
+        return;
+      }
+
+      await adminDb
+        .collection('skills')
+        .doc(skillId)
+        .collection('versions')
+        .doc(versionData.id)
+        .set(versionData, { merge: true });
+
+      res.json({ success: true, versionId: versionData.id, skillId });
+    } catch (err: any) {
+      console.error('Failed to save skill version via Firebase Admin:', err);
+      res.status(500).json({ error: err?.message || 'Failed to save version snapshot' });
+    }
+  });
+
   // Health and System Diagnostics
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({

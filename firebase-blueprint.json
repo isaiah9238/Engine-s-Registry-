@@ -273,6 +273,62 @@
         }
       },
       "required": ["userId", "email"]
+    },
+    "SkillVersionSnapshot": {
+      "title": "SkillVersionSnapshot",
+      "description": "Historical snapshot of a skill containing code files, guidelines markdown, parameters, and metadata.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique snapshot identifier."
+        },
+        "skillId": {
+          "type": "string",
+          "description": "Identifier of the target skill."
+        },
+        "version": {
+          "type": "string",
+          "description": "SemVer version identifier."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the skill at this snapshot."
+        },
+        "description": {
+          "type": "string",
+          "description": "Skill description at this snapshot."
+        },
+        "category": {
+          "type": "string",
+          "description": "Domain category."
+        },
+        "status": {
+          "type": "string",
+          "description": "Operational status."
+        },
+        "authorEmail": {
+          "type": "string",
+          "description": "Email address of the snapshot author."
+        },
+        "changeLog": {
+          "type": "string",
+          "description": "Summary notes describing changes in this version."
+        },
+        "codeFiles": {
+          "type": "string",
+          "description": "JSON string of scaffolded code files."
+        },
+        "skillMarkdown": {
+          "type": "string",
+          "description": "Raw content of SKILL.md at this snapshot."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp."
+        }
+      },
+      "required": ["id", "skillId", "version", "title", "skillMarkdown"]
     }
   },
   "firestore": {
@@ -287,6 +343,12 @@
         "$ref": "#/entities/ExecutionTrace"
       },
       "description": "Operational subcollection for tool invocation telemetry and runtime tracing."
+    },
+    "/skills/{skillId}/versions/{versionId}": {
+      "schema": {
+        "$ref": "#/entities/SkillVersionSnapshot"
+      },
+      "description": "Historical version snapshots of skill codeFiles and metadata for auditing and restoration."
     },
     "/agent_memories/{memoryId}": {
       "schema": {
