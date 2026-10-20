@@ -48,53 +48,60 @@ function getAi(): GoogleGenAI {
 function initFirebaseAdmin() {
   if (adminDb) return;
   try {
-    let saRaw: any = null;
+    let serviceAccount: any = null;
 
-    // 1. Direct local file check
+    // Direct root file check
     const localKeyPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
     if (fs.existsSync(localKeyPath)) {
-      saRaw = JSON.parse(fs.readFileSync(localKeyPath, 'utf8'));
-    } 
-    // 2. Fallbacks
-    else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
-      saRaw = JSON.parse(fs.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'utf8'));
+      console.log(`[Firebase Admin] Found key file at: ${localKeyPath}`);
+      serviceAccount = JSON.parse(fs.readFileSync(localKeyPath, 'utf8'));
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+      console.log(`[Firebase Admin] Using GOOGLE_APPLICATION_CREDENTIALS path: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
+      serviceAccount = JSON.parse(fs.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'utf8'));
     } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      saRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+      serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
+        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+        : process.env.FIREBASE_SERVICE_ACCOUNT;
     } else if (fs.existsSync(devSecretsPath)) {
       const devSecrets = JSON.parse(fs.readFileSync(devSecretsPath, 'utf8'));
-      saRaw = devSecrets.FIREBASE_SERVICE_ACCOUNT;
+      if (devSecrets.FIREBASE_SERVICE_ACCOUNT) {
+        serviceAccount = typeof devSecrets.FIREBASE_SERVICE_ACCOUNT === 'string'
+          ? JSON.parse(devSecrets.FIREBASE_SERVICE_ACCOUNT)
+          : devSecrets.FIREBASE_SERVICE_ACCOUNT;
+      }
     }
 
-    if (saRaw) {
-      const serviceAccount = typeof saRaw === 'string' ? JSON.parse(saRaw) : saRaw;
-      const targetDatabaseId =
-        process.env.FIRESTORE_DATABASE_ID || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc';
-
-      const adminApp =
-        getAdminApps().length === 0
-          ? initAdminApp({
-              credential: cert(serviceAccount),
-              projectId: serviceAccount.project_id || 'gen-lang-client-0573899362',
-              storageBucket:
-                process.env.FIREBASE_STORAGEBUCKET || 'gen-lang-client-0573899362.firebasestorage.app',
-            })
-          : getAdminApp();
-
-      adminDb = getAdminFirestore(adminApp, targetDatabaseId);
-      adminAuth = getAdminAuth(adminApp);
-      adminAppInfo = {
-        projectId: serviceAccount.project_id,
-        clientEmail: serviceAccount.client_email,
-        databaseId: targetDatabaseId,
-      };
-      console.log(
-        `[Firebase Admin] Authenticated with Service Account (${serviceAccount.client_email}) for database ${targetDatabaseId}`
-      );
-    } else {
-      console.warn('[Firebase Admin] Warning: serviceAccountKey.json not found or unreadable.');
+    if (!serviceAccount) {
+      console.error('[Firebase Admin] Initialization failed: No service account credentials found.');
+      return;
     }
+
+    const targetDatabaseId =
+      process.env.FIRESTORE_DATABASE_ID || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc';
+
+    const adminApp =
+      getAdminApps().length === 0
+        ? initAdminApp({
+            credential: cert(serviceAccount),
+            projectId: serviceAccount.project_id || 'gen-lang-client-0573899362',
+            storageBucket:
+              process.env.FIREBASE_STORAGEBUCKET || 'gen-lang-client-0573899362.firebasestorage.app',
+          })
+        : getAdminApp();
+
+    adminDb = getAdminFirestore(adminApp, targetDatabaseId);
+    adminAuth = getAdminAuth(adminApp);
+    adminAppInfo = {
+      projectId: serviceAccount.project_id,
+      clientEmail: serviceAccount.client_email,
+      databaseId: targetDatabaseId,
+    };
+
+    console.log(
+      `[Firebase Admin] Authenticated with Service Account (${serviceAccount.client_email}) for database ${targetDatabaseId}`
+    );
   } catch (adminErr: any) {
-    console.error('[Firebase Admin] Initialization error:', adminErr?.message || adminErr);
+    console.error('[Firebase Admin] Fatal error during initialization:', adminErr?.message || adminErr);
   }
 }
 

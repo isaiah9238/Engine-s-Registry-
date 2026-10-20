@@ -1,13 +1,31 @@
 {
-  "name": "orical-matrix-skill",
+  "id": "orical-matrix-skill",
+  "name": "orical-matrix",
+  "title": "Orical Matrix Computational Engine",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module"
+  "category": "computation",
+  "description": "Calculates high-dimensional state space transformations, matrix decomposition, and topological coordinate projections.",
+  "tags": [
+    "matrix-computation",
+    "state-space",
+    "topology",
+    "linear-algebra"
+  ],
+  "entrypoint": "guidelines.md",
+  "runtime": "in_process",
+  "isExecutable": true,
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "dimension": {
+        "type": "number",
+        "description": "Matrix dimension order."
+      },
+      "transformationType": {
+        "type": "string",
+        "description": "Type of mathematical transformation or manifold mapping."
+      }
+    },
+    "required": ["dimension"]
+  }
 }

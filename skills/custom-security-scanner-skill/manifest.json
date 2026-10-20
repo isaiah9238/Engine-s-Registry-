@@ -1,0 +1,33 @@
+{
+  "id": "custom-security-scanner-skill",
+  "name": "custom-security-scanner",
+  "title": "Custom Security Scanner & Static Analysis Engine",
+  "version": "1.0.0",
+  "category": "security",
+  "description": "Scans workspace repositories for exposed API tokens, service account credentials, insecure dependency configurations, and unsafe script execution paths.",
+  "tags": [
+    "security-scanner",
+    "static-analysis",
+    "secret-detection",
+    "ast-audit",
+    "credential-guard"
+  ],
+  "entrypoint": "custom-security-scanner.SKILL.md",
+  "runtime": "in_process",
+  "isExecutable": true,
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "targetDirectory": {
+        "type": "string",
+        "description": "Root path of the workspace to inspect."
+      },
+      "scanDepth": {
+        "type": "string",
+        "enum": ["surface", "deep"],
+        "description": "Depth of file tree traversal and AST checks."
+      }
+    },
+    "required": ["targetDirectory"]
+  }
+}

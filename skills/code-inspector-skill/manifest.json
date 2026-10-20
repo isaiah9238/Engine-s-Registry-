@@ -1,0 +1,37 @@
+{
+  "id": "code-inspector-skill",
+  "name": "code-inspector",
+  "title": "Autonomous Code Inspector, Author & Project Finalizer",
+  "version": "1.0.0",
+  "category": "development",
+  "description": "Inspects project files, dependencies, and type contracts before writing, modifying, and integrating new code files into the application.",
+  "tags": [
+    "code-inspection",
+    "automated-authoring",
+    "import-resolution",
+    "typescript",
+    "static-analysis"
+  ],
+  "entrypoint": "guidelines.md",
+  "runtime": "in_process",
+  "isExecutable": true,
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "targetFilePath": {
+        "type": "string",
+        "description": "The destination path where the new file should be written or audited."
+      },
+      "importedModules": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "List of module specifiers or files that need to be resolved and inspected."
+      },
+      "codePayload": {
+        "type": "string",
+        "description": "Proposed code content or blueprint to validate and finalize."
+      }
+    },
+    "required": ["targetFilePath"]
+  }
+}

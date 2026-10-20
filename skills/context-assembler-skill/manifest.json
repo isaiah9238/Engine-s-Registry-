@@ -1,0 +1,37 @@
+{
+  "id": "context-assembler-skill",
+  "name": "context-assembler",
+  "title": "Contextual Prompt Assembler",
+  "version": "1.0.0",
+  "category": "orchestration",
+  "description": "Assembles deterministic prompts by layering procedural invariant rules, semantic vector memory from multi-tier stores, and active conversation state.",
+  "tags": [
+    "prompt-assembly",
+    "context-engineering",
+    "multi-tier-memory",
+    "agent-architecture"
+  ],
+  "entrypoint": "guidelines.md",
+  "runtime": "in_process",
+  "isExecutable": true,
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "proceduralRules": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "System-level invariants and constraints (Layer 1)."
+      },
+      "semanticFacts": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Retrieved episodic and declarative memories from vector stores (Layer 2)."
+      },
+      "activeTask": {
+        "type": "string",
+        "description": "Current working prompt and conversation context (Layer 3)."
+      }
+    },
+    "required": ["activeTask"]
+  }
+}

@@ -5,6 +5,15 @@
   "description": "Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files. Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically determine which skill in the registry is best for a given job.",
   "category": "orchestration",
   "version": "1.3.0",
+  "tags": [
+    "meta-skill",
+    "author-skill",
+    "write-skill",
+    "evaluate-skill",
+    "best-skill",
+    "registry",
+    "ingestion"
+  ],
   "status": "published",
   "isPublic": true,
   "authorId": "system-architect",

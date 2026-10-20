@@ -30,7 +30,7 @@ src/
 ├── components/           # Reusable UI presentation units
 │   ├── common/           # Pure, shared UI primitives (buttons, modals, tooltips)
 │   └── [feature]/        # Domain-specific composite views and controls
-├── hooks/                # Reusable client hooks (SWR / TanStack Query wrappers, local storage bindings)
+├── hooks/                # Reusable client hooks (SWR / React Query wrappers, storage bindings)
 ├── services/             # External integration layers, API clients, and database repositories
 ├── types/                # Domain models, strict TypeScript interfaces, and enum contracts
 ├── data/                 # Static presets, constants, and deterministic seed manifests
@@ -46,4 +46,27 @@ src/
 | **Database Repositories** | `src/services/` | `[domain]Repository.ts` | Abstract raw Firestore/Database operations behind typed async methods. |
 | **External API / SDK Adapters** | `src/services/` | `[provider]Service.ts` or `[provider].ts` | Enforce singleton patterns for clients (Firebase Modular v10+, Google Gen AI). |
 | **Local Cache & Storage** | `src/services/` | `[domain]Cache.ts` | Local-first synchronous/indexed caching logic isolated from UI. |
-| **Query & Fetch Hooks** | `src/hooks/` | `use[Feature][Action].ts` (e.g., `useSkillQuery.ts`) | Adhere to SWR/Query patterns; avoid redundant imperative
+| **Query & Fetch Hooks** | `src/hooks/` | `use[Feature][Action].ts` (e.g., `useSkillQuery.ts`) | Adhere to SWR/Query patterns; avoid redundant imperative fetching. |
+| **Utility Functions** | `src/utils/` | `[feature]Utils.ts` (e.g., `vectorMath.ts`) | Pure functions only. Zero side-effects or external network calls. |
+| **Ingestion & CLI Scripts** | `scripts/` | `[action][Domain].ts` (e.g., `seedMemories.ts`) | Runnable via `tsx` or `node`. Direct execution scripts outside client bundles. |
+
+## Boundary Separation Invariants
+
+1. **Client vs. Server Boundary:** 
+   - Files containing Node-only packages (`firebase-admin`, `better-sqlite3`, `fs`, `path`) must reside in root server controllers or `scripts/`.
+   - Never import from `firebase-admin` inside `src/services/` or `src/components/`.
+
+2. **Secrets & Credentials Boundary:**
+   - Secret JSON files (`serviceAccountKey.json`, `client_secret.json`, `.dev.env.json`) reside in the project root, never inside `src/`.
+   - All secret files must be explicitly declared in `.gitignore`.
+
+3. **Absolute vs. Relative Aliases:**
+   - Use the `@/` path alias mapped to `src/` for cross-feature imports.
+   - Use relative imports (`./` or `../`) only within the same localized directory subtree.
+
+## Execution Checklist
+
+- [ ] Inspect source file dependencies for backend/native node imports before placing into `src/`.
+- [ ] Confirm entity types reside in `src/types/` without runtime logic.
+- [ ] Route all direct Firestore or Gemini API calls through dedicated abstraction classes in `src/services/`.
+- [ ] Verify that no service account keys or private credentials exist inside the `src/` tree.

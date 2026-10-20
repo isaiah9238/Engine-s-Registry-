@@ -1,0 +1,34 @@
+{
+  "id": "architecture-file-placement-skill",
+  "name": "architecture-file-placement",
+  "title": "Repository Architecture & File Placement Specialist",
+  "version": "1.0.0",
+  "category": "architecture",
+  "description": "Enforces deterministic, scalable folder structure and file placement conventions across modern TypeScript, React, Next.js, and modular Firebase architectures.",
+  "tags": [
+    "project-structure",
+    "file-placement",
+    "clean-architecture",
+    "typescript",
+    "react",
+    "firebase"
+  ],
+  "entrypoint": "guidelines.md",
+  "runtime": "in_process",
+  "isExecutable": true,
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "targetPath": {
+        "type": "string",
+        "description": "Proposed relative or absolute path of the file to audit or assign."
+      },
+      "responsibility": {
+        "type": "string",
+        "enum": ["model", "component", "hook", "service", "utility", "script", "secret"],
+        "description": "Primary architectural role of the file."
+      }
+    },
+    "required": ["responsibility"]
+  }
+}

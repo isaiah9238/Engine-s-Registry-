@@ -1,0 +1,31 @@
+{
+  "id": "music-skill",
+  "name": "music-skill",
+  "title": "Music Theory & Algorithmic Composition Specialist",
+  "version": "1.0.0",
+  "category": "audio",
+  "description": "Guides musical composition, tonal harmony analysis, rhythm matrix construction, and programmatic MIDI generation.",
+  "tags": [
+    "music-theory",
+    "algorithmic-composition",
+    "midi-generation",
+    "harmonic-analysis"
+  ],
+  "entrypoint": "guidelines.md",
+  "runtime": "in_process",
+  "isExecutable": true,
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "keySignature": {
+        "type": "string",
+        "description": "Tonal center and scale mode (e.g., C Major, D Dorian)."
+      },
+      "tempo": {
+        "type": "number",
+        "description": "Target tempo in BPM."
+      }
+    },
+    "required": ["keySignature"]
+  }
+}

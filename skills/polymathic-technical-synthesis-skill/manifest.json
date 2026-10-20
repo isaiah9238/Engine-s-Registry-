@@ -1,0 +1,32 @@
+{
+  "id": "polymathic-technical-synthesis-skill",
+  "name": "polymathic-technical-synthesis",
+  "title": "Polymathic Technical Synthesis Specialist",
+  "version": "1.0.0",
+  "category": "synthesis",
+  "description": "Executes multi-disciplinary technical synthesis across computer science, physics, cognitive dynamics, and quantitative systems engineering using first-principles scaffolding.",
+  "tags": [
+    "polymathic-synthesis",
+    "first-principles",
+    "cross-domain-mapping",
+    "technical-architecture"
+  ],
+  "entrypoint": "guidelines.md",
+  "runtime": "in_process",
+  "isExecutable": true,
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "problemStatement": {
+        "type": "string",
+        "description": "The complex multi-domain technical challenge to analyze."
+      },
+      "domains": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "List of domains to synthesize (e.g., distributed systems, quantum state dynamics)."
+      }
+    },
+    "required": ["problemStatement"]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "id": "deep-research-skill",
+  "name": "open-deep-research-pipeline",
+  "title": "Open Deep Research Multi-Agent Orchestration Engine",
+  "version": "1.1.0",
+  "category": "orchestration",
+  "description": "Orchestrates an open-source multi-agent research pipeline using 4 specialized sub-agent roles (Planner/Scope, Coordinator/Supervisor, Execution Sub-Agent, and Publisher/Writer) to execute parallelized multi-hop research, context isolation, and cited report synthesis.",
+  "tags": [
+    "deep-research",
+    "multi-agent",
+    "context-isolation",
+    "react-loop",
+    "cited-synthesis"
+  ],
+  "entrypoint": "guidelines.md",
+  "runtime": "in_process",
+  "isExecutable": true,
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "topic": {
+        "type": "string",
+        "description": "The target research domain, prompt, or technical inquiry."
+      },
+      "depth": {
+        "type": "string",
+        "enum": ["standard", "exhaustive"],
+        "description": "Breadth of parallel sub-queries and decomposition iterations."
+      }
+    },
+    "required": ["topic"]
+  }
+}
