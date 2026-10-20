@@ -39,6 +39,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    css: {
+      postcss: {},
+    },
     define: {
       'process.env.RECAPTCHA_SITE_KEY': JSON.stringify(recaptchaKey),
       'process.env.APPCHECK_TOKEN': JSON.stringify(appCheckToken),
