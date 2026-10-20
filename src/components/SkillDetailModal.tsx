@@ -27,6 +27,14 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
+  RotateCcw,
+  Plus,
+  FileCode,
+  Calendar,
+  User,
+  GitCompare,
+  ChevronRight,
+  Info,
 } from 'lucide-react';
 import type {
   SkillRecord,
@@ -38,6 +46,7 @@ import type {
   ExecutionTrace,
   CachedSkillRecord,
   SecurityClearance,
+  SkillVersionSnapshot,
 } from '../types/skill';
 import {
   fetchExecutionTraces,
@@ -47,6 +56,11 @@ import {
   cacheSkillLocally,
   getCachedSkill,
 } from '../services/localRegistryCache';
+import {
+  fetchSkillVersions,
+  createSkillSnapshot,
+  restoreSkillSnapshot,
+} from '../services/skillVersionService';
 
 interface SkillDetailModalProps {
   skill: SkillRecord | null;
@@ -54,6 +68,7 @@ interface SkillDetailModalProps {
   onEdit: (skill: SkillRecord) => void;
   onExportDrive: (skill: SkillRecord) => void;
   onShareGmail: (skill: SkillRecord) => void;
+  onSkillUpdated?: (skill: SkillRecord) => void;
 }
 
 export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
@@ -62,9 +77,10 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   onEdit,
   onExportDrive,
   onShareGmail,
+  onSkillUpdated,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'markdown' | 'summary' | 'parameters' | 'code' | 'examples' | 'references' | 'runtime' | 'executions' | 'cache'
+    'markdown' | 'summary' | 'parameters' | 'code' | 'examples' | 'references' | 'runtime' | 'executions' | 'cache' | 'versions'
   >('markdown');
   const [copied, setCopied] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -83,13 +99,80 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   const [isCaching, setIsCaching] = useState(false);
   const [cacheSuccessMessage, setCacheSuccessMessage] = useState<string | null>(null);
 
+  // Version History & Snapshot State
+  const [versions, setVersions] = useState<SkillVersionSnapshot[]>([]);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+  const [selectedSnapshot, setSelectedSnapshot] = useState<SkillVersionSnapshot | null>(null);
+  const [selectedSnapshotFile, setSelectedSnapshotFile] = useState<string | null>(null);
+  const [snapshotSubTab, setSnapshotSubTab] = useState<'code' | 'metadata' | 'markdown' | 'diff'>('code');
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreConfirmSnapshot, setRestoreConfirmSnapshot] = useState<SkillVersionSnapshot | null>(null);
+  const [restoreSuccessToast, setRestoreSuccessToast] = useState<string | null>(null);
+  const [snapshotSearchQuery, setSnapshotSearchQuery] = useState('');
+  const [showCreateSnapshotModal, setShowCreateSnapshotModal] = useState(false);
+  const [newSnapshotLog, setNewSnapshotLog] = useState('');
+  const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
+
   useEffect(() => {
     if (skill) {
       loadSkillTraces(skill.id);
       loadCacheStatus(skill.id);
       initTestParams(skill);
+      loadVersionHistory(skill);
     }
   }, [skill?.id]);
+
+  const loadVersionHistory = async (s: SkillRecord) => {
+    setIsLoadingVersions(true);
+    try {
+      const list = await fetchSkillVersions(s);
+      setVersions(list);
+      if (list.length > 0) {
+        setSelectedSnapshot(list[0]);
+      }
+    } catch (err) {
+      console.warn('Failed to load version history:', err);
+    } finally {
+      setIsLoadingVersions(false);
+    }
+  };
+
+  const handleRestoreSnapshot = async (snapshot: SkillVersionSnapshot) => {
+    if (!skill) return;
+    setIsRestoring(true);
+    try {
+      const restored = await restoreSkillSnapshot(skill, snapshot);
+      setRestoreConfirmSnapshot(null);
+      setRestoreSuccessToast(`Skill successfully restored to snapshot v${snapshot.version}!`);
+      await loadVersionHistory(restored);
+      setSelectedSnapshot(snapshot);
+      onSkillUpdated?.(restored);
+      setTimeout(() => setRestoreSuccessToast(null), 4500);
+    } catch (err: any) {
+      console.error('Failed to restore snapshot:', err);
+      alert(`Restoration failed: ${err?.message || 'Unknown error'}`);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const handleCreateManualSnapshot = async () => {
+    if (!skill) return;
+    setIsCreatingSnapshot(true);
+    try {
+      const snap = await createSkillSnapshot(skill, newSnapshotLog || undefined);
+      setShowCreateSnapshotModal(false);
+      setNewSnapshotLog('');
+      setRestoreSuccessToast(`New snapshot created: v${snap.version}`);
+      await loadVersionHistory(skill);
+      setSelectedSnapshot(snap);
+      setTimeout(() => setRestoreSuccessToast(null), 3500);
+    } catch (err: any) {
+      console.error('Failed to create snapshot:', err);
+    } finally {
+      setIsCreatingSnapshot(false);
+    }
+  };
 
   const loadSkillTraces = async (skillId: string) => {
     setIsLoadingTraces(true);
@@ -189,6 +272,53 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
 
   const fileNames = Object.keys(codeFiles);
   const currentFile = selectedFile && codeFiles[selectedFile] ? codeFiles[selectedFile] : fileNames.length > 0 ? codeFiles[fileNames[0]] : null;
+
+  // Snapshot parsed state
+  let snapshotCodeFiles: Record<string, SkillCodeFile> = {};
+  let snapshotParameters: SkillParameter[] = [];
+  let snapshotReferences: SkillReference[] = [];
+  let snapshotExamples: SkillExample[] = [];
+  let snapshotDependencies: string[] = [];
+  let snapshotSummaryObj: any = null;
+
+  if (selectedSnapshot) {
+    try {
+      if (selectedSnapshot.codeFiles) snapshotCodeFiles = JSON.parse(selectedSnapshot.codeFiles);
+    } catch {}
+    try {
+      if (selectedSnapshot.parameters) snapshotParameters = JSON.parse(selectedSnapshot.parameters);
+    } catch {}
+    try {
+      if (selectedSnapshot.references) snapshotReferences = JSON.parse(selectedSnapshot.references);
+    } catch {}
+    try {
+      if (selectedSnapshot.examples) snapshotExamples = JSON.parse(selectedSnapshot.examples);
+    } catch {}
+    try {
+      if (selectedSnapshot.dependencies) snapshotDependencies = JSON.parse(selectedSnapshot.dependencies);
+    } catch {}
+    try {
+      if (selectedSnapshot.summaryJson) snapshotSummaryObj = JSON.parse(selectedSnapshot.summaryJson);
+    } catch {}
+  }
+
+  const snapshotFileNames = Object.keys(snapshotCodeFiles);
+  const currentSnapshotFile = selectedSnapshotFile && snapshotCodeFiles[selectedSnapshotFile]
+    ? snapshotCodeFiles[selectedSnapshotFile]
+    : snapshotFileNames.length > 0
+      ? snapshotCodeFiles[snapshotFileNames[0]]
+      : null;
+
+  const filteredSnapshots = versions.filter((v) => {
+    if (!snapshotSearchQuery.trim()) return true;
+    const q = snapshotSearchQuery.toLowerCase();
+    return (
+      v.version.toLowerCase().includes(q) ||
+      v.title.toLowerCase().includes(q) ||
+      (v.changeLog && v.changeLog.toLowerCase().includes(q)) ||
+      (v.authorEmail && v.authorEmail.toLowerCase().includes(q))
+    );
+  });
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -385,6 +515,18 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
           >
             <Database className="w-4 h-4 text-amber-500" />
             <span>Local Registry Cache</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('versions')}
+            className={`flex items-center gap-1.5 py-3 px-3 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === 'versions'
+                ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <History className="w-4 h-4 text-sky-500" />
+            <span>Version History ({versions.length})</span>
           </button>
         </div>
 
@@ -1145,7 +1287,719 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* TAB 10: Version History & Snapshot Restoration */}
+          {activeTab === 'versions' && (
+            <div className="space-y-5">
+              {/* Restoration / Creation Toast Alert */}
+              {restoreSuccessToast && (
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-mono text-emerald-800 dark:text-emerald-200 flex items-center justify-between shadow-xs animate-in fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="font-semibold">{restoreSuccessToast}</span>
+                  </div>
+                  <button
+                    onClick={() => setRestoreSuccessToast(null)}
+                    className="p-1 hover:bg-emerald-200/50 dark:hover:bg-emerald-900 rounded cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Version History Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <History className="w-4 h-4 text-sky-500" />
+                      <span>Version Snapshots &amp; Rollback Engine</span>
+                    </h3>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      {versions.length} {versions.length === 1 ? 'Snapshot' : 'Snapshots'}
+                    </span>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                      Live: v{skill.version}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Inspect immutable historical snapshots of scaffolded code files, schemas, and metadata, or roll back with automatic safety backup.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={snapshotSearchQuery}
+                      onChange={(e) => setSnapshotSearchQuery(e.target.value)}
+                      placeholder="Filter snapshots..."
+                      className="w-44 sm:w-52 pl-3 pr-7 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                    />
+                    {snapshotSearchQuery && (
+                      <button
+                        onClick={() => setSnapshotSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => loadVersionHistory(skill)}
+                    disabled={isLoadingVersions}
+                    title="Reload snapshots"
+                    className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingVersions ? 'animate-spin' : ''}`} />
+                  </button>
+
+                  <button
+                    onClick={() => setShowCreateSnapshotModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Take Snapshot</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Master-Detail Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                {/* Left Column: Snapshots Timeline */}
+                <div className="lg:col-span-5 space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-mono">
+                      Release Timeline ({filteredSnapshots.length})
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      Sorted latest first
+                    </span>
+                  </div>
+
+                  {isLoadingVersions && (
+                    <div className="p-6 text-center text-xs text-slate-500 font-mono bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                      <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2 text-indigo-500" />
+                      Loading version snapshots...
+                    </div>
+                  )}
+
+                  {!isLoadingVersions && filteredSnapshots.length === 0 && (
+                    <div className="p-8 text-center text-xs text-slate-500 font-mono bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+                      <History className="w-8 h-8 mx-auto text-slate-400 opacity-60" />
+                      <p>No snapshots found matching criteria.</p>
+                      <button
+                        onClick={() => setShowCreateSnapshotModal(true)}
+                        className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                      >
+                        Create first snapshot now
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
+                    {filteredSnapshots.map((snap) => {
+                      const isSelected = selectedSnapshot?.id === snap.id;
+                      const isLive = snap.version === skill.version;
+                      let snapFilesCount = 0;
+                      try {
+                        snapFilesCount = Object.keys(JSON.parse(snap.codeFiles || '{}')).length;
+                      } catch {}
+
+                      return (
+                        <div
+                          key={snap.id}
+                          onClick={() => {
+                            setSelectedSnapshot(snap);
+                            setSelectedSnapshotFile(null);
+                          }}
+                          className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative text-left ${
+                            isSelected
+                              ? 'bg-indigo-50/70 dark:bg-indigo-950/50 border-indigo-500 shadow-sm ring-1 ring-indigo-500/30'
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-lg bg-slate-900 text-sky-300 dark:bg-slate-800 dark:text-sky-300">
+                                v{snap.version}
+                              </span>
+
+                              {isLive && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                  CURRENT LIVE
+                                </span>
+                              )}
+
+                              <span className="text-[10px] font-mono text-slate-400">
+                                {new Date(snap.createdAt).toLocaleDateString()} &bull; {new Date(snap.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                              {snap.status}
+                            </span>
+                          </div>
+
+                          <div className="mt-2 text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-1">
+                            {snap.title}
+                          </div>
+
+                          <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                            {snap.changeLog || snap.description}
+                          </p>
+
+                          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                            <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
+                              <span className="flex items-center gap-1">
+                                <FileCode className="w-3 h-3 text-indigo-500" />
+                                {snapFilesCount} {snapFilesCount === 1 ? 'file' : 'files'}
+                              </span>
+                              <span className="truncate max-w-[120px]">
+                                {snap.authorEmail?.split('@')[0] || snap.authorId || 'author'}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRestoreConfirmSnapshot(snap);
+                              }}
+                              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                                isLive
+                                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                                  : 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/80 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                              }`}
+                              title={isLive ? 'Currently live version' : `Restore skill to snapshot v${snap.version}`}
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>{isLive ? 'Current' : 'Restore'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Column: Selected Snapshot Inspector */}
+                <div className="lg:col-span-7 space-y-4">
+                  {selectedSnapshot ? (
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-5">
+                      {/* Snapshot Header Card */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-mono font-bold text-sm px-2.5 py-0.5 rounded-lg bg-indigo-600 text-white">
+                              v{selectedSnapshot.version}
+                            </span>
+                            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                              Snapshot ID: <code className="text-indigo-600 dark:text-indigo-400">{selectedSnapshot.id}</code>
+                            </span>
+                          </div>
+                          <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                            {selectedSnapshot.title}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Created {new Date(selectedSnapshot.createdAt).toLocaleString()} by {selectedSnapshot.authorEmail || 'system'}
+                          </p>
+                        </div>
+
+                        {/* Prominent Restore Action */}
+                        <button
+                          onClick={() => setRestoreConfirmSnapshot(selectedSnapshot)}
+                          disabled={isRestoring || selectedSnapshot.version === skill.version}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
+                            selectedSnapshot.version === skill.version
+                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 cursor-default'
+                              : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white shadow-indigo-500/20'
+                          }`}
+                        >
+                          {isRestoring ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="w-4 h-4" />
+                          )}
+                          <span>
+                            {selectedSnapshot.version === skill.version
+                              ? 'Currently Live Version'
+                              : `Restore to v${selectedSnapshot.version}`}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Change Log Alert */}
+                      <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800/80 font-mono text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2.5">
+                        <Clock className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                            Snapshot Change Note
+                          </span>
+                          <p className="mt-0.5 leading-relaxed text-slate-800 dark:text-slate-200">
+                            {selectedSnapshot.changeLog || 'Standard release snapshot without specific release notes.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Snapshot Sub-Tabs */}
+                      <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-2 text-xs font-medium">
+                        <button
+                          onClick={() => setSnapshotSubTab('code')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                            snapshotSubTab === 'code'
+                              ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-semibold'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <FileCode className="w-3.5 h-3.5" />
+                          <span>Code Files ({snapshotFileNames.length})</span>
+                        </button>
+
+                        <button
+                          onClick={() => setSnapshotSubTab('metadata')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                            snapshotSubTab === 'metadata'
+                              ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-semibold'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <Sliders className="w-3.5 h-3.5" />
+                          <span>Metadata &amp; Parameters</span>
+                        </button>
+
+                        <button
+                          onClick={() => setSnapshotSubTab('markdown')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                            snapshotSubTab === 'markdown'
+                              ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-semibold'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>SKILL.md Spec</span>
+                        </button>
+
+                        <button
+                          onClick={() => setSnapshotSubTab('diff')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                            snapshotSubTab === 'diff'
+                              ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-semibold'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <GitCompare className="w-3.5 h-3.5" />
+                          <span>Compare vs Live</span>
+                        </button>
+                      </div>
+
+                      {/* Sub-tab 1: Code Files */}
+                      {snapshotSubTab === 'code' && (
+                        <div className="space-y-3">
+                          {snapshotFileNames.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              {/* File List */}
+                              <div className="md:col-span-1 space-y-1 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200 dark:border-slate-800 max-h-[380px] overflow-y-auto">
+                                <span className="text-[10px] text-slate-400 font-mono px-2 py-1 block uppercase tracking-wider">
+                                  Snapshot Files ({snapshotFileNames.length})
+                                </span>
+                                {snapshotFileNames.map((fn) => (
+                                  <button
+                                    key={fn}
+                                    onClick={() => setSelectedSnapshotFile(fn)}
+                                    className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-mono transition-colors cursor-pointer flex items-center justify-between ${
+                                      currentSnapshotFile?.filename === fn
+                                        ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs'
+                                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800'
+                                    }`}
+                                  >
+                                    <span className="truncate">{fn}</span>
+                                    <FileCode className="w-3.5 h-3.5 shrink-0 opacity-60" />
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* File Content Preview */}
+                              <div className="md:col-span-2 space-y-2">
+                                {currentSnapshotFile ? (
+                                  <div>
+                                    <div className="flex items-center justify-between pb-1.5">
+                                      <span className="text-xs font-mono font-semibold text-slate-800 dark:text-slate-200">
+                                        {currentSnapshotFile.filename} <span className="text-slate-400 font-normal">({currentSnapshotFile.language})</span>
+                                      </span>
+                                      <button
+                                        onClick={() => handleCopy(currentSnapshotFile.content, `snap-${currentSnapshotFile.filename}`)}
+                                        className="flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 hover:bg-slate-100 cursor-pointer"
+                                      >
+                                        {copied === `snap-${currentSnapshotFile.filename}` ? (
+                                          <Check className="w-3 h-3 text-emerald-500" />
+                                        ) : (
+                                          <Copy className="w-3 h-3" />
+                                        )}
+                                        <span>{copied === `snap-${currentSnapshotFile.filename}` ? 'Copied' : 'Copy'}</span>
+                                      </button>
+                                    </div>
+                                    <pre className="p-4 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs text-sky-300 leading-relaxed overflow-x-auto max-h-[340px] whitespace-pre">
+                                      {currentSnapshotFile.content}
+                                    </pre>
+                                  </div>
+                                ) : (
+                                  <div className="p-6 text-center text-xs text-slate-400 font-mono">
+                                    Select a file from the left to view contents.
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center text-xs text-slate-400 font-mono bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+                              No scaffolded code files captured in this version snapshot.
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Sub-tab 2: Metadata & Parameters */}
+                      {snapshotSubTab === 'metadata' && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
+                            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Category</span>
+                              <span className="font-bold text-slate-900 dark:text-white mt-1 block truncate">
+                                {selectedSnapshot.category}
+                              </span>
+                            </div>
+                            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Status</span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 mt-1 block uppercase">
+                                {selectedSnapshot.status}
+                              </span>
+                            </div>
+                            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Runtime</span>
+                              <span className="font-bold text-indigo-600 dark:text-indigo-400 mt-1 block">
+                                {selectedSnapshot.runtime || 'in_process'}
+                              </span>
+                            </div>
+                            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Clearance</span>
+                              <span className="font-bold text-slate-900 dark:text-white mt-1 block">
+                                {selectedSnapshot.securityClearance || 'public'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono">
+                              Parameters ({snapshotParameters.length})
+                            </span>
+                            {snapshotParameters.length > 0 ? (
+                              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden font-mono text-xs">
+                                <table className="w-full text-left">
+                                  <thead className="bg-slate-50 dark:bg-slate-800 text-[11px] text-slate-500">
+                                    <tr>
+                                      <th className="p-2">Name</th>
+                                      <th className="p-2">Type</th>
+                                      <th className="p-2">Required</th>
+                                      <th className="p-2">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {snapshotParameters.map((p, idx) => (
+                                      <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                                        <td className="p-2 font-bold text-indigo-600 dark:text-indigo-400">{p.name}</td>
+                                        <td className="p-2 text-slate-500">{p.type}</td>
+                                        <td className="p-2">
+                                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${p.required ? 'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400' : 'bg-slate-100 text-slate-500'}`}>
+                                            {p.required ? 'REQUIRED' : 'OPTIONAL'}
+                                          </span>
+                                        </td>
+                                        <td className="p-2 text-slate-700 dark:text-slate-300">{p.description}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl text-xs text-slate-400 font-mono">
+                                No parameters recorded in this snapshot.
+                              </div>
+                            )}
+                          </div>
+
+                          {selectedSnapshot.summaryJson && (
+                            <div className="space-y-1.5">
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono">
+                                Summary JSON Specification
+                              </span>
+                              <pre className="p-3.5 bg-slate-950 border border-slate-800 text-emerald-300 rounded-xl font-mono text-xs overflow-x-auto max-h-48 whitespace-pre">
+                                {selectedSnapshot.summaryJson}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Sub-tab 3: Markdown */}
+                      {snapshotSubTab === 'markdown' && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between pb-1">
+                            <span className="text-xs font-mono text-slate-400">
+                              Historical SKILL.md specification snapshot
+                            </span>
+                            <button
+                              onClick={() => handleCopy(selectedSnapshot.skillMarkdown, 'snap-md')}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 hover:bg-slate-100 cursor-pointer"
+                            >
+                              {copied === 'snap-md' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{copied === 'snap-md' ? 'Copied' : 'Copy SKILL.md'}</span>
+                            </button>
+                          </div>
+                          <pre className="p-4 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl font-mono text-xs leading-relaxed overflow-x-auto max-h-[380px] whitespace-pre-wrap">
+                            {selectedSnapshot.skillMarkdown}
+                          </pre>
+                        </div>
+                      )}
+
+                      {/* Sub-tab 4: Diff vs Live */}
+                      {snapshotSubTab === 'diff' && (
+                        <div className="space-y-4 font-mono text-xs">
+                          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <h5 className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                              <GitCompare className="w-4 h-4 text-sky-500" />
+                              <span>Comparison: Snapshot v{selectedSnapshot.version} vs Live v{skill.version}</span>
+                            </h5>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                              {/* Snapshot Column */}
+                              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+                                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 block">
+                                  Historical Snapshot (v{selectedSnapshot.version})
+                                </span>
+                                <div className="space-y-1 text-slate-600 dark:text-slate-400">
+                                  <p><strong>Title:</strong> {selectedSnapshot.title}</p>
+                                  <p><strong>Category:</strong> {selectedSnapshot.category}</p>
+                                  <p><strong>Runtime:</strong> {selectedSnapshot.runtime || 'in_process'}</p>
+                                  <p><strong>Code Files:</strong> {snapshotFileNames.length} files</p>
+                                  <p><strong>Params:</strong> {snapshotParameters.length} params</p>
+                                  <p><strong>Markdown:</strong> {selectedSnapshot.skillMarkdown?.length || 0} chars</p>
+                                </div>
+                              </div>
+
+                              {/* Live Column */}
+                              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+                                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block">
+                                  Current Live Registry (v{skill.version})
+                                </span>
+                                <div className="space-y-1 text-slate-600 dark:text-slate-400">
+                                  <p><strong>Title:</strong> {skill.title}</p>
+                                  <p><strong>Category:</strong> {skill.category}</p>
+                                  <p><strong>Runtime:</strong> {skill.runtime || 'in_process'}</p>
+                                  <p><strong>Code Files:</strong> {fileNames.length} files</p>
+                                  <p><strong>Params:</strong> {parameters.length} params</p>
+                                  <p><strong>Markdown:</strong> {skill.skillMarkdown?.length || 0} chars</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                              Scaffolded File Availability Matrix
+                            </span>
+                            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                              <table className="w-full text-left">
+                                <thead className="bg-slate-100 dark:bg-slate-800 text-[11px] text-slate-500">
+                                  <tr>
+                                    <th className="p-2.5">Filename</th>
+                                    <th className="p-2.5">In Snapshot (v{selectedSnapshot.version})</th>
+                                    <th className="p-2.5">In Live (v{skill.version})</th>
+                                    <th className="p-2.5">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                  {Array.from(new Set([...snapshotFileNames, ...fileNames])).map((fname) => {
+                                    const inSnap = snapshotFileNames.includes(fname);
+                                    const inLive = fileNames.includes(fname);
+                                    let statusText = 'Identical file name';
+                                    let statusColor = 'text-slate-500';
+
+                                    if (inSnap && !inLive) {
+                                      statusText = 'Only in snapshot (will be restored)';
+                                      statusColor = 'text-amber-500 font-bold';
+                                    } else if (!inSnap && inLive) {
+                                      statusText = 'Added in live (absent in snapshot)';
+                                      statusColor = 'text-sky-500 font-bold';
+                                    }
+
+                                    return (
+                                      <tr key={fname} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                                        <td className="p-2.5 font-bold text-slate-800 dark:text-slate-200">{fname}</td>
+                                        <td className="p-2.5">
+                                          {inSnap ? (
+                                            <span className="text-emerald-500 flex items-center gap-1">
+                                              <Check className="w-3.5 h-3.5" /> Present
+                                            </span>
+                                          ) : (
+                                            <span className="text-slate-400">—</span>
+                                          )}
+                                        </td>
+                                        <td className="p-2.5">
+                                          {inLive ? (
+                                            <span className="text-emerald-500 flex items-center gap-1">
+                                              <Check className="w-3.5 h-3.5" /> Present
+                                            </span>
+                                          ) : (
+                                            <span className="text-slate-400">—</span>
+                                          )}
+                                        </td>
+                                        <td className={`p-2.5 ${statusColor}`}>{statusText}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-12 text-center text-xs text-slate-400 font-mono bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+                      <History className="w-10 h-10 mx-auto text-slate-300 opacity-60" />
+                      <p>Select a snapshot from the timeline on the left to inspect code files, metadata, and schemas.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Restore Confirmation Dialog Modal */}
+        {restoreConfirmSnapshot && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+            <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                  <RotateCcw className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Restore Skill to Snapshot v{restoreConfirmSnapshot.version}?
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    Target: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{skill.name}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-mono space-y-2 text-slate-600 dark:text-slate-300">
+                <p>
+                  <strong>Snapshot Title:</strong> {restoreConfirmSnapshot.title}
+                </p>
+                <p>
+                  <strong>Tagged Date:</strong> {new Date(restoreConfirmSnapshot.createdAt).toLocaleString()}
+                </p>
+                {restoreConfirmSnapshot.changeLog && (
+                  <p>
+                    <strong>Change Log:</strong> {restoreConfirmSnapshot.changeLog}
+                  </p>
+                )}
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-sans font-medium">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>An automatic safety backup of your current live version (v{skill.version}) will be created immediately before this restore.</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isRestoring}
+                  onClick={() => setRestoreConfirmSnapshot(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isRestoring}
+                  onClick={() => handleRestoreSnapshot(restoreConfirmSnapshot)}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isRestoring ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4" />
+                  )}
+                  <span>{isRestoring ? 'Restoring Snapshot...' : `Confirm & Restore v${restoreConfirmSnapshot.version}`}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Manual Create Snapshot Dialog Modal */}
+        {showCreateSnapshotModal && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400">
+                    <Plus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Create Version Snapshot
+                    </h3>
+                    <p className="text-xs font-mono text-slate-500">
+                      Tagging live state as <strong className="text-indigo-600 dark:text-indigo-400">v{skill.version}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCreateSnapshotModal(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block font-mono">
+                  Change Note / Rationale:
+                </label>
+                <textarea
+                  value={newSnapshotLog}
+                  onChange={(e) => setNewSnapshotLog(e.target.value)}
+                  placeholder="e.g., Captured state prior to major prompt engineering refactoring..."
+                  rows={3}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateSnapshotModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isCreatingSnapshot}
+                  onClick={handleCreateManualSnapshot}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isCreatingSnapshot ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>{isCreatingSnapshot ? 'Creating Snapshot...' : 'Save Snapshot'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

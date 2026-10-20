@@ -108,6 +108,22 @@ service cloud.firestore {
           && incoming().latencyMs is number;
         allow update, delete: if isAdmin();
       }
+
+      // Operational Subcollection: Version Snapshots
+      match /versions/{versionId} {
+        allow read: if isValidId(versionId) && (
+          isSignedIn() ||
+          resource.data.get('isPublic', true) == true
+        );
+        allow create: if isSignedIn()
+          && isValidId(versionId)
+          && incoming().id == versionId
+          && incoming().skillId == skillId
+          && incoming().version is string && incoming().version.size() <= 32
+          && incoming().title is string && incoming().title.size() <= 200
+          && incoming().skillMarkdown is string && incoming().skillMarkdown.size() <= 100000;
+        allow update, delete: if isAdmin();
+      }
     }
 
     // Agent Memories Collection (Vector indexed)

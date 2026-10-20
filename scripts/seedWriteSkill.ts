@@ -1,113 +1,50 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { initializeApp, cert, getApps, getApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { GoogleGenAI } from '@google/genai';
+import fs from 'fs';
 
-// 1. Initialize Firebase Admin
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(process.env.GOOGLE_APPLICATION_CREDENTIALS || './serviceAccountKey.json'),
-    storageBucket: 'gen-lang-client-0573899362.firebasestorage.app',
-  });
+let saRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+if (!saRaw && fs.existsSync('/app/.dev.env.json')) {
+  try {
+    const devSecrets = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
+    saRaw = devSecrets.FIREBASE_SERVICE_ACCOUNT;
+  } catch {}
 }
 
-const db = getFirestore();
-const bucket = getStorage().bucket();
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const serviceAccount = saRaw ? (typeof saRaw === 'string' ? JSON.parse(saRaw) : saRaw) : null;
+const targetDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc';
 
-// 2. Define File Payloads
-const GUIDELINES_MD = `---
+const app = getApps().length === 0
+  ? initializeApp({
+      credential: serviceAccount ? cert(serviceAccount) : undefined,
+      projectId: serviceAccount?.project_id || 'gen-lang-client-0573899362',
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'gen-lang-client-0573899362.firebasestorage.app',
+    })
+  : getApp();
+
+const db = getFirestore(app, targetDatabaseId);
+const bucket = getStorage(app).bucket();
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+
+// 2. Load latest guidelines markdown
+const guidelinesFilePath = 'skills/write-skill/guidelines.md';
+const GUIDELINES_MD = fs.existsSync(guidelinesFilePath)
+  ? fs.readFileSync(guidelinesFilePath, 'utf8')
+  : `---
 name: write-skill
 title: "Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine"
 description: >
   Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files.
   Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically
   determine which skill in the registry is best for a given job.
-version: 1.2.0
+version: 1.3.0
 category: orchestration
 securityClearance: public
 isExecutable: true
 runtime: in_process
-sourceReferences:
-  - "notebook://studio-alchemist/meta-authoring.ipynb"
-  - "https://agent-engine.internal/specs/skill-v1"
-tags: [meta-skill, skill-authoring, decision-engine, prompt-engineering, ingestion-pipeline]
-dependencies: ["js-yaml", "@types/node"]
-priority: 1
-thermodynamicFootprint: low
-requiresHumanReview: false
 ---
-
 # Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine
-
-## Description & Mission
-The write-skill meta-skill is the core cognitive blueprint of the Agent Engine. It empowers an autonomous system to reflectively generate new specialized capabilities, audit existing skill logic, and determine optimal routing paths when dispatched on complex tasks. It enforces strict separation of concerns, defensive parameter schemas, verifiable examples, and machine-digestible ingestion summaries.
-
-## Preconditions & Skill Selection Guidance
-
-### When to Use
-- When the user tasks the agent with a novel capability not covered by existing registry skills.
-- When an existing skill exhibits drift, hallucinations, outdated schemas, or missing constraints.
-- When determining "Which skill is best for this job?" through automated capability matrix matching.
-- When transforming raw workflow notes or API specifications into production-grade SKILL.md documentation.
-
-### When NOT to Use
-- For trivial, single-step tasks that do not require reusable procedural memory or multi-turn rules.
-- When an exact, high-confidence skill already exists in the registry.
-
-## Parameters & Invocation Schemas
-
-| Parameter | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| \`skillName\` | string | true | Kebab-case machine identifier (e.g., data-pipeline-cleaner). |
-| \`title\` | string | true | Clear, descriptive human-readable title. |
-| \`mission\` | string | true | Concise statement of the skill's purpose and operational boundaries. |
-| \`targetCapabilities\` | array | true | Specific tools, APIs, or reasoning patterns the skill encapsulates. |
-| \`parametersList\` | array | true | Explicit inputs with types, default values, and required constraints. |
-| \`examplesList\` | array | true | High-fidelity multi-turn prompt/action/expected-outcome walkthroughs. |
-| \`codeScaffolding\` | object | false | Optional map of helper functions, scripts, or test harnesses. |
-| \`referencesList\` | array | false | External documentation, API specs, and foundational research citations. |
-
-## Operational Rules & Ingestion Pipeline Constraints
-1. **Zero-Pill Discipline & Anti-Slop:** Every section must serve a verifiable function. Avoid empty filler phrases.
-2. **Schema Invariance:** Every parameter must include explicit type boundaries and regex patterns where applicable.
-3. **Determinism in Selection:** Before generating a new skill, compare similarity against the active registry. If cosine or semantic overlap exceeds 0.85, propose an upgrade rather than a duplicate.
-4. **Summary JSON Synthesis:** Every authored skill must generate a strict JSON payload conforming to the Ingestion Pipeline Contract.
-
-## In-Context Examples & Multi-Turn Walkthroughs
-
-### Example 1: Authoring a Cloud Storage Sync Skill
-* **Prompt:** "Create a skill for managing S3 and Google Cloud Storage bucket backups with checksum verification."
-* **Scenario Context:** Developer needs automated multi-cloud archival.
-* **Expected Outcome:** Generates a valid SKILL.md with YAML frontmatter, parameters for sourceBucket, targetBucket, verifyChecksum, and scaffolding for MD5 comparisons.
-
-### Example 2: Determining Best Skill for a Machine Learning Task
-* **Prompt:** "The user wants to optimize low-power inference on edge neuromorphic hardware."
-* **Scenario Context:** Agent queries registry for neuromorphic and low-power.
-* **Expected Outcome:** Evaluates write-skill vs neuromorphic-energy-optimizer. Returns neuromorphic-energy-optimizer with confidence 98% and provides rationale based on Landauer limits and SNN event-driven timing.
-
-## Scaffolded Code & Reference Implementations
-
-### validator.ts
-\`\`\`typescript
-export function validateSkillStructure(manifest: Record<string, any>): { valid: boolean; issues: string[] } {
-  const issues: string[] = [];
-  if (!manifest.name || !/^[a-z0-9-_]+$/.test(manifest.name)) {
-    issues.push('Skill name must be valid kebab-case.');
-  }
-  if (!manifest.description || manifest.description.length < 30) {
-    issues.push('Description must be detailed and at least 30 characters.');
-  }
-  if (!Array.isArray(manifest.parameters) || manifest.parameters.length === 0) {
-    issues.push('Skills must declare explicit parameters.');
-  }
-  return { valid: issues.length === 0, issues };
-}
-\`\`\`
-
-## References & Technical Foundations
-- **Agent Skills Architecture Specification:** Official standard for agent skill registry.
-- **Prompt Engineering & Metacognitive Reasoning:** Chain-of-thought and structured tool registration patterns.
 `;
 
 const SCRIPT_JS = `/**
@@ -172,13 +109,17 @@ async function main() {
   console.log('Uploading guidelines.md and script.js to Firebase Storage...');
   const basePath = `skills/${skillId}`;
   
-  await bucket.file(`${basePath}/guidelines.md`).save(GUIDELINES_MD, {
-    metadata: { contentType: 'text/markdown' },
-  });
+  try {
+    await bucket.file(`${basePath}/guidelines.md`).save(GUIDELINES_MD, {
+      metadata: { contentType: 'text/markdown' },
+    });
 
-  await bucket.file(`${basePath}/script.js`).save(SCRIPT_JS, {
-    metadata: { contentType: 'application/javascript' },
-  });
+    await bucket.file(`${basePath}/script.js`).save(SCRIPT_JS, {
+      metadata: { contentType: 'application/javascript' },
+    });
+  } catch (storageErr: any) {
+    console.warn('[Seed] Cloud storage notice (skipping file upload):', storageErr?.message || storageErr);
+  }
 
   const bundleStoragePath = `gs://${bucket.name}/${basePath}/`;
   const guidelinesUri = `${bundleStoragePath}guidelines.md`;
@@ -193,15 +134,19 @@ Preconditions: User requests creation of new agent skill; Agent requires procedu
 Routing Keywords: meta-skill, author-skill, write-skill, evaluate-skill, best-skill, registry, ingestion
 Best Suited For: Bootstrapping new agent engine skills; Routing incoming prompts to optimal skills; Auditing prompt drift in legacy skills`;
 
-  const embedResponse = await ai.models.embedContent({
-    model: 'text-embedding-004',
-    contents: semanticSource,
-    config: {
-      outputDimensionality: 768,
-    },
-  });
-
-  const embeddingVector = embedResponse.embeddings?.[0]?.values ?? [];
+  let embeddingVector: number[] = [];
+  try {
+    const embedResponse = await ai.models.embedContent({
+      model: 'gemini-embedding-001',
+      contents: semanticSource,
+      config: {
+        outputDimensionality: 768,
+      },
+    });
+    embeddingVector = embedResponse.embeddings?.[0]?.values ?? [];
+  } catch (embedErr: any) {
+    console.warn('[Seed] Embedding notice:', embedErr?.message || embedErr);
+  }
 
   // 3. Upsert Firestore Document
   console.log(`Writing record to Firestore at /skills/${skillId}...`);
@@ -213,7 +158,7 @@ Best Suited For: Bootstrapping new agent engine skills; Routing incoming prompts
     title: 'Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine',
     description: 'Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files. Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically determine which skill in the registry is best for a given job.',
     category: 'orchestration',
-    version: '1.2.0',
+    version: '1.3.0',
     status: 'published',
     isPublic: true,
     authorId: 'system-architect',
@@ -228,16 +173,17 @@ Best Suited For: Bootstrapping new agent engine skills; Routing incoming prompts
     parametersSchema: {
       type: 'object',
       properties: {
-      skillName: { type: 'string', description: 'Kebab-case machine identifier slug.' },
-      title: { type: 'string', description: 'Human-readable title.' },
-      mission: { type: 'string', description: 'Concise statement of operational boundaries.' },
-      targetCapabilities: { type: 'array', description: 'Encapsulated tools, APIs, and reasoning patterns.' },
-      parametersList: { type: 'array', description: 'Explicit inputs with types and constraints.' },
-      examplesList: { type: 'array', description: 'Multi-turn walkthrough examples.' }
+        skillName: { type: 'string', description: 'Kebab-case machine identifier slug.' },
+        title: { type: 'string', description: 'Human-readable title.' },
+        mission: { type: 'string', description: 'Concise statement of operational boundaries.' },
+        targetCapabilities: { type: 'array', description: 'Encapsulated tools, APIs, and reasoning patterns.' },
+        parametersList: { type: 'array', description: 'Explicit inputs with types and constraints.' },
+        examplesList: { type: 'array', description: 'Multi-turn walkthrough examples.' }
+      },
+      required: ['skillName', 'title', 'mission', 'targetCapabilities', 'parametersList', 'examplesList']
     },
-    required: ['skillName', 'title', 'mission', 'targetCapabilities', 'parametersList', 'examplesList']
-  },
-    embedding: FieldValue.vector(embeddingVector),
+    skillMarkdown: GUIDELINES_MD,
+    ...(embeddingVector.length > 0 ? { embedding: FieldValue.vector(embeddingVector) } : {}),
     bundleStoragePath,
     bundleFiles: {
       guidelinesMd: guidelinesUri,
@@ -251,7 +197,7 @@ Best Suited For: Bootstrapping new agent engine skills; Routing incoming prompts
       title: 'Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine',
       description: 'Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files. Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically determine which skill in the registry is best for a given job.',
       category: 'orchestration',
-      version: '1.2.0',
+      version: '1.3.0',
       runtime: 'in_process',
       isExecutable: true,
       securityClearance: 'public',
@@ -277,7 +223,7 @@ Best Suited For: Bootstrapping new agent engine skills; Routing incoming prompts
     }),
     createdAt: now,
     updatedAt: now,
-  });
+  }, { merge: true });
 
   console.log(`Successfully registered and bundled [${skillId}].`);
 }

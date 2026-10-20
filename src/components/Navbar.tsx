@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   GitBranch,
+  BarChart3,
 } from 'lucide-react';
 import type { User } from 'firebase/auth';
 
@@ -26,6 +27,8 @@ interface NavbarProps {
   isVectorStudioActive?: boolean;
   onToggleMindMap?: () => void;
   isMindMapActive?: boolean;
+  onToggleAnalytics?: () => void;
+  isAnalyticsActive?: boolean;
   onToggleChat?: () => void;
   isChatOpen?: boolean;
   skillCount: number;
@@ -43,6 +46,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   isVectorStudioActive = false,
   onToggleMindMap,
   isMindMapActive = false,
+  onToggleAnalytics,
+  isAnalyticsActive = false,
   onToggleChat,
   isChatOpen = false,
   skillCount,
@@ -113,6 +118,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Sparkles className="w-4 h-4 text-purple-500" />
               <span className="hidden md:inline">Vector &amp; Memories</span>
               <span className="md:hidden">Vector</span>
+            </button>
+          )}
+
+          {/* Analytics Dashboard Button */}
+          {onToggleAnalytics && (
+            <button
+              onClick={onToggleAnalytics}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all shadow-xs cursor-pointer ${
+                isAnalyticsActive
+                  ? 'bg-sky-600 text-white shadow-sky-500/25 shadow-md'
+                  : 'text-sky-700 dark:text-sky-300 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900/60 border border-sky-200 dark:border-sky-800/60'
+              }`}
+              title="Usage metrics, popular categories, and growth trends"
+            >
+              <BarChart3 className="w-4 h-4 text-sky-500" />
+              <span className="hidden md:inline">Analytics</span>
+              <span className="md:hidden">Stats</span>
             </button>
           )}
 

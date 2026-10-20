@@ -236,3 +236,27 @@ export interface AgentSkillDocument {
   updatedAt: string;
 }
 
+export interface SkillVersionSnapshot {
+  id: string; // Unique snapshot ID (e.g. "snap-write-skill-1.2.0-17293849")
+  skillId: string;
+  version: string;
+  title: string;
+  description: string;
+  category: StudioAlchemistCategory | string;
+  status: SkillStatus;
+  authorEmail: string;
+  authorId?: string;
+  changeLog?: string; // Summary of changes or rationale
+  codeFiles: string; // JSON string of Record<string, SkillCodeFile>
+  skillMarkdown: string;
+  summaryJson?: string;
+  parameters?: string;
+  examples?: string;
+  references?: string;
+  dependencies?: string;
+  runtime?: SkillRuntime;
+  securityClearance?: SecurityClearance;
+  createdAt: string; // ISO timestamp
+  isCurrent?: boolean;
+}
+

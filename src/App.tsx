@@ -22,6 +22,7 @@ import {
   RefreshCw,
   FolderGit2,
   GitBranch,
+  BarChart3,
 } from 'lucide-react';
 import type { SkillRecord, SkillStatus } from './types/skill';
 import {
@@ -48,6 +49,7 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { VectorSearchStudio } from './components/VectorSearchStudio';
 import { MindMapStudio } from './components/MindMapStudio';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { GeminiChatBot } from './components/GeminiChatBot';
 
 export default function App() {
@@ -59,8 +61,8 @@ export default function App() {
   // Gemini Chat Bot Floating Copilot
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Main View Navigation: Registry vs Mind Map vs Vector Engine
-  const [activeMainView, setActiveMainView] = useState<'registry' | 'mindmap' | 'vector'>('registry');
+  // Main View Navigation: Registry vs Mind Map vs Vector Engine vs Analytics
+  const [activeMainView, setActiveMainView] = useState<'registry' | 'mindmap' | 'vector' | 'analytics'>('registry');
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -314,6 +316,10 @@ export default function App() {
           setActiveMainView((prev) => (prev === 'vector' ? 'registry' : 'vector'))
         }
         isVectorStudioActive={activeMainView === 'vector'}
+        onToggleAnalytics={() =>
+          setActiveMainView((prev) => (prev === 'analytics' ? 'registry' : 'analytics'))
+        }
+        isAnalyticsActive={activeMainView === 'analytics'}
         onToggleChat={() => setIsChatOpen((prev) => !prev)}
         isChatOpen={isChatOpen}
         skillCount={skills.length}
@@ -321,7 +327,7 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Workspace Mode Switcher: Registry Grid vs Mind Map Architect vs Vector Engine */}
+        {/* Workspace Mode Switcher: Registry Grid vs Mind Map Architect vs Vector Engine vs Analytics */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -334,6 +340,18 @@ export default function App() {
             >
               <Layers className="w-4 h-4" />
               <span>Skill Registry Catalog ({skills.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMainView('analytics')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeMainView === 'analytics'
+                  ? 'bg-sky-600 text-white shadow-xs'
+                  : 'text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/50 border border-sky-200 dark:border-sky-800/80'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 text-sky-500" />
+              <span>Usage Analytics &amp; Trends</span>
             </button>
 
             <button
@@ -367,6 +385,14 @@ export default function App() {
             </button>
           </div>
         </div>
+
+        {activeMainView === 'analytics' && (
+          <AnalyticsDashboard
+            skills={skills}
+            onSelectSkill={(s) => setSelectedSkill(s)}
+            onNavigateToRegistry={() => setActiveMainView('registry')}
+          />
+        )}
 
         {activeMainView === 'mindmap' && (
           <MindMapStudio
@@ -631,6 +657,10 @@ export default function App() {
         }}
         onExportDrive={(s) => handleOpenExport(s, 'drive')}
         onShareGmail={(s) => handleOpenExport(s, 'gmail')}
+        onSkillUpdated={(updatedSkill) => {
+          setSelectedSkill(updatedSkill);
+          setSkills((prev) => prev.map((s) => (s.id === updatedSkill.id ? updatedSkill : s)));
+        }}
       />
 
       {/* 2. Skill Editor Modal */}

@@ -1,18 +1,31 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { initializeApp, cert, getApps, getApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { GoogleGenAI } from '@google/genai';
+import fs from 'fs';
 
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(process.env.GOOGLE_APPLICATION_CREDENTIALS || './serviceAccountKey.json'),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'gen-lang-client-0573899362.firebasestorage.app',
-  });
+let saRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+if (!saRaw && fs.existsSync('/app/.dev.env.json')) {
+  try {
+    const devSecrets = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
+    saRaw = devSecrets.FIREBASE_SERVICE_ACCOUNT;
+  } catch {}
 }
 
-const db = getFirestore();
-const bucket = getStorage().bucket();
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const serviceAccount = saRaw ? (typeof saRaw === 'string' ? JSON.parse(saRaw) : saRaw) : null;
+const targetDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc';
+
+const app = getApps().length === 0
+  ? initializeApp({
+      credential: serviceAccount ? cert(serviceAccount) : undefined,
+      projectId: serviceAccount?.project_id || 'gen-lang-client-0573899362',
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'gen-lang-client-0573899362.firebasestorage.app',
+    })
+  : getApp();
+
+const db = getFirestore(app, targetDatabaseId);
+const bucket = getStorage(app).bucket();
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 const GUIDELINES_MD = `---
 name: custom-security-scanner
@@ -78,18 +91,21 @@ async function main(): Promise<void> {
   const basePath = `skills/${skillId}`;
   const now = new Date().toISOString();
 
-  // 1. Upload Cloud Storage Artifacts
-  await bucket.file(`${basePath}/guidelines.md`).save(GUIDELINES_MD, {
-    metadata: { contentType: 'text/markdown' },
-  });
+  // 1. Upload Cloud Storage Artifacts (resilient fallback if bucket not provisioned)
+  let bundleStoragePath = `gs://${bucket.name}/${basePath}/`;
+  let guidelinesUri = `${bundleStoragePath}guidelines.md`;
+  let runtimeScriptUri = `${bundleStoragePath}script.js`;
 
-  await bucket.file(`${basePath}/script.js`).save(SCRIPT_JS, {
-    metadata: { contentType: 'application/javascript' },
-  });
-
-  const bundleStoragePath = `gs://${bucket.name}/${basePath}/`;
-  const guidelinesUri = `${bundleStoragePath}guidelines.md`;
-  const runtimeScriptUri = `${bundleStoragePath}script.js`;
+  try {
+    await bucket.file(`${basePath}/guidelines.md`).save(GUIDELINES_MD, {
+      metadata: { contentType: 'text/markdown' },
+    });
+    await bucket.file(`${basePath}/script.js`).save(SCRIPT_JS, {
+      metadata: { contentType: 'application/javascript' },
+    });
+  } catch (storageErr: any) {
+    console.warn('[Seed] Cloud storage bucket note (skipping file upload):', storageErr?.message || storageErr);
+  }
 
   // 2. Vector Embedding (768-dim via text-embedding-004)
   const semanticSource = `Title: Zero-Trust Security & Policy Scanner
@@ -98,15 +114,19 @@ Category: security-audit
 Preconditions: Validating external/internal API endpoints before execution; verifying TLS requirements and zero-trust policies
 Routing Keywords: security, zero-trust, endpoint-scanner, policy-enforcement, tls-audit, tool-auth`;
 
-  const embedResponse = await ai.models.embedContent({
-    model: 'text-embedding-004',
-    contents: semanticSource,
-    config: {
-      outputDimensionality: 768,
-    },
-  });
-
-  const embeddingVector = embedResponse.embeddings?.[0]?.values ?? [];
+  let embeddingVector: number[] = [];
+  try {
+    const embedResponse = await ai.models.embedContent({
+      model: 'gemini-embedding-001',
+      contents: semanticSource,
+      config: {
+        outputDimensionality: 768,
+      },
+    });
+    embeddingVector = embedResponse.embeddings?.[0]?.values ?? [];
+  } catch (embedErr) {
+    console.warn('[Seed] Embedding note:', embedErr);
+  }
 
   // 3. Upsert Firestore Record with FieldValue.vector
   await db.collection('skills').doc(skillId).set({

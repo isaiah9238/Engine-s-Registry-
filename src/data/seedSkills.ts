@@ -162,7 +162,7 @@ export function evaluateVault(endpoint: string): VaultAuditResult {
     title: 'Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine',
     description: 'Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files. Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically determine which skill in the registry is best for a given job.',
     category: 'orchestration',
-    version: '1.2.0',
+    version: '1.3.0',
     authorId: 'system-architect',
     authorEmail: 'isaiahmsmith@aihomev2.com',
     status: 'published',
@@ -189,7 +189,7 @@ export function evaluateVault(endpoint: string): VaultAuditResult {
       required: ['skillRecord', 'summaryJson']
     }, null, 2),
     createdAt: '2026-10-04T21:30:00.000Z',
-    updatedAt: '2026-10-04T21:30:00.000Z',
+    updatedAt: new Date().toISOString(),
     skillMarkdown: `---
 name: write-skill
 title: "Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine"
@@ -197,7 +197,7 @@ description: |
   Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files.
   Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically
   determine which skill in the registry is best for a given job.
-version: 1.2.0
+version: 1.3.0
 category: orchestration
 securityClearance: public
 isExecutable: true
@@ -289,7 +289,7 @@ export function validateSkillStructure(manifest: Record<string, any>): { valid: 
       title: 'Skill Architect: Autonomous Meta-Skill Authoring & Decision Engine',
       description: 'Enables autonomous agents to design, author, audit, validate, and register new SKILL.md files. Evaluates existing skill logic to improve output quality, prevent redundancy, and systematically determine which skill in the registry is best for a given job.',
       category: 'orchestration',
-      version: '1.2.0',
+      version: '1.3.0',
       runtime: 'in_process',
       isExecutable: true,
       securityClearance: 'public',
