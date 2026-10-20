@@ -20,34 +20,48 @@ process.on('unhandledRejection', (reason: any) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Lazy-resolve Gemini API key from environment or secrets file
-let cachedAiClient: GoogleGenAI | null = null;
-function getAi(): GoogleGenAI {
-  if (cachedAiClient) return cachedAiClient;
-  let apiKey = process.env.GEMINI_API_KEY || '';
-  try {
-    if (!apiKey && fs.existsSync('/app/.dev.env.json')) {
-      const devSecrets = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
-      apiKey = devSecrets.GEMINI_API_KEY || '';
-    }
-  } catch {
-    // ignore
-  }
-  cachedAiClient = new GoogleGenAI({ apiKey: apiKey || 'placeholder-key' });
-  return cachedAiClient;
-}
+// Dynamic path resolution for development secrets (Windows local vs Container)
+const devSecretsPath = fs.existsSync(path.resolve(process.cwd(), '.dev.env.json'))
+  ? path.resolve(process.cwd(), '.dev.env.json')
+  : '/app/.dev.env.json';
 
-// Initialize Firebase Admin SDK with Service Account Key (idempotent)
+// Top-level state for Firebase Admin instances
 let adminDb: FirebaseFirestore.Firestore | null = null;
 let adminAuth: any = null;
 let adminAppInfo: { projectId?: string; clientEmail?: string; databaseId?: string } | null = null;
 
+// Lazy-resolve Gemini API key from environment or secrets file
+let cachedAiClient: GoogleGenAI | null = null;
+function getAi(): GoogleGenAI {
+  if (cachedAiClient) return cachedAiClient;
+  let apiKey = process.env.apiKey || '';
+  try {
+    if (!apiKey && fs.existsSync(devSecretsPath)) {
+      const devSecrets = JSON.parse(fs.readFileSync(devSecretsPath, 'utf8'));
+      apiKey = devSecrets.apiKey || '';
+    }
+  } catch {}
+  cachedAiClient = new GoogleGenAI({ apiKey: apiKey || 'placeholder-key' });
+  return cachedAiClient;
+}
+
 function initFirebaseAdmin() {
   if (adminDb) return;
   try {
-    let saRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!saRaw && fs.existsSync('/app/.dev.env.json')) {
-      const devSecrets = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
+    let saRaw: any = null;
+
+    // 1. Direct local file check
+    const localKeyPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
+    if (fs.existsSync(localKeyPath)) {
+      saRaw = JSON.parse(fs.readFileSync(localKeyPath, 'utf8'));
+    } 
+    // 2. Fallbacks
+    else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+      saRaw = JSON.parse(fs.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'utf8'));
+    } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      saRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+    } else if (fs.existsSync(devSecretsPath)) {
+      const devSecrets = JSON.parse(fs.readFileSync(devSecretsPath, 'utf8'));
       saRaw = devSecrets.FIREBASE_SERVICE_ACCOUNT;
     }
 
@@ -76,9 +90,11 @@ function initFirebaseAdmin() {
       console.log(
         `[Firebase Admin] Authenticated with Service Account (${serviceAccount.client_email}) for database ${targetDatabaseId}`
       );
+    } else {
+      console.warn('[Firebase Admin] Warning: serviceAccountKey.json not found or unreadable.');
     }
   } catch (adminErr: any) {
-    console.warn('[Firebase Admin] Notice during initialization:', adminErr?.message || adminErr);
+    console.error('[Firebase Admin] Initialization error:', adminErr?.message || adminErr);
   }
 }
 
@@ -90,7 +106,7 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
-  // API Route: Generate standard 768-dimensional Vector Embeddings for Dynamic Tool Selection & Agent Memories
+  // API Route: Generate standard 768-dimensional Vector Embeddings
   app.post('/api/embed', async (req: Request, res: Response) => {
     try {
       const { text } = req.body;

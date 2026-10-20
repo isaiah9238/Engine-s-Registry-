@@ -25,7 +25,7 @@ const app = getApps().length === 0
 
 const db = getFirestore(app, targetDatabaseId);
 const bucket = getStorage(app).bucket();
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const ai = new GoogleGenAI({ apiKey: process.env.apiKey || '' });
 
 // 2. Load latest guidelines markdown
 const guidelinesFilePath = 'skills/write-skill/guidelines.md';

@@ -22,7 +22,7 @@ const app = getApps().length === 0
   : getApp();
 
 const db = getFirestore(app, targetDatabaseId);
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const ai = new GoogleGenAI({ apiKey: process.env.apiKey || '' });
 
 async function seed() {
   console.log('[Seed] Seeding multi-tier-agent-memory skill into database:', targetDatabaseId);

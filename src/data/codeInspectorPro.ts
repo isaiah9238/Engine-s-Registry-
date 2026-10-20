@@ -378,7 +378,7 @@ button {
       daemonTimer: null,
       typingDebounceTimeout: null,
       saveDebounceTimeout: null,
-      apiKey: localStorage.getItem('gemini_api_key') || '',
+      apiKey: localStorage.getItem('apiKey') || '',
       currentBlobUrl: null,
 
       selectors: {
@@ -713,7 +713,7 @@ button {
         const val = document.getElementById('apiKeyInput').value.trim();
         if (val && !val.startsWith('•••')) {
           AppState.apiKey = val;
-          localStorage.setItem('gemini_api_key', val);
+          localStorage.setItem('apiKey', val);
           alert('API Key saved!');
           updateApiKeyUI();
         }
@@ -721,7 +721,7 @@ button {
 
       document.getElementById('removeKeyBtn')?.addEventListener('click', () => {
         AppState.apiKey = '';
-        localStorage.removeItem('gemini_api_key');
+        localStorage.removeItem('apiKey');
         updateApiKeyUI();
         alert('API Key removed permanently.');
       });

@@ -29,10 +29,12 @@ firestore-debug.log*
 # Environment & credentials
 .env*
 !.env.example
+.dev.env.json
 firebase-applet-config.json
 firebase-service-account.json
 serviceAccountKey.json
 serviceAccount*.json
+client_secret.json
 *-adminsdk-*.json
 .firebase/
 .npmrc
