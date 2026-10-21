@@ -749,6 +749,126 @@ Ensures seamless portability of agent skills by leveraging Google Drive for clou
     ], null, 2),
     dependencies: JSON.stringify(['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/gmail.send'], null, 2),
     codeFiles: JSON.stringify({}, null, 2),
+  },
+  {
+    id: 'deep-research-brief-generator',
+    name: 'deep_research_brief_generator',
+    title: 'Deep Research Prompt & Brief Generator',
+    description: 'Formulates structured, machine-executable research briefs and prompts for deep research agents. Enforces explicit sub-topic scoping, source provenance constraints, iterative ReAct retrieval loops, and inline citation discipline.',
+    category: 'workflow-automation',
+    version: '1.0.0',
+    authorId: 'system-agent-engine',
+    authorEmail: 'isaiah9238@gmail.com',
+    status: 'published',
+    isPublic: true,
+    securityClearance: 'public',
+    isExecutable: true,
+    runtime: 'in_process',
+    sourceReferences: [
+      'skills/deep-research-skill/deep-research-brief-generator.md',
+      'https://github.com/open-deep-research/pipeline-spec'
+    ],
+    parametersSchema: {
+      type: 'object',
+      properties: {
+        rawQuery: { type: 'string', description: 'Raw, unstructured user research request.' },
+        scopeDimensions: { type: 'array', description: 'List of target sub-topics to parallelize.' },
+        primarySourceTargets: { type: 'array', description: 'Mandatory authoritative domains and venues.' },
+        requireInlineCitations: { type: 'boolean', description: 'Whether to mandate strict citation brackets.' }
+      },
+      required: ['rawQuery']
+    },
+    createdAt: new Date('2026-10-20T00:40:00Z').toISOString(),
+    updatedAt: new Date('2026-10-20T00:45:00Z').toISOString(),
+    skillMarkdown: `---
+name: deep-research-brief-generator
+title: "Deep Research Prompt & Brief Generator"
+description: "Formulates structured, machine-executable research briefs and prompts for deep research agents. Enforces explicit sub-topic scoping, source provenance constraints, iterative ReAct retrieval loops, and inline citation discipline."
+version: 1.0.0
+category: research-and-prompting
+genkit-managed: false
+priority: 1
+requiresHumanReview: false
+---
+
+# Deep Research Prompt & Brief Generator
+
+## Overview & Mission
+The deep-research-brief-generator skill transforms unstructured research requests into standardized, machine-executable Research Briefs. Eliminates context clash, prevents token inflation, and forces rigorous source-grounded verification.
+`,
+    summaryJson: JSON.stringify({
+      schemaVersion: '2026.1',
+      skillId: 'deep-research-brief-generator',
+      name: 'deep_research_brief_generator',
+      title: 'Deep Research Prompt & Brief Generator',
+      description: 'Formulates structured, machine-executable research briefs and prompts for deep research agents.',
+      category: 'workflow-automation',
+      version: '1.0.0',
+      runtime: 'in_process',
+      isExecutable: true,
+      securityClearance: 'public',
+      triggerPreconditions: [
+        'User initiates complex or ambiguous research request',
+        'Multi-agent deep research pipeline needs structured brief contract'
+      ],
+      routingKeywords: ['deep research', 'brief generator', 'retrieval', 'sub-topic breakdown', 'prompt schema', 'citation'],
+      evaluationRubric: {
+        priority: 1,
+        thermodynamicFootprint: 'low',
+        requiresHumanReview: false,
+        verificationLevel: 'strict'
+      },
+      bestSuitedFor: [
+        'Complex technical inquiries requiring multi-source synthesis',
+        'Autonomous multi-agent research pipelines'
+      ],
+      unsuitedFor: ['Simple factual lookup questions']
+    }, null, 2),
+    parameters: JSON.stringify([
+      { name: 'rawQuery', type: 'string', required: true, description: 'Raw, unstructured research inquiry.' },
+      { name: 'depth', type: 'string', required: false, description: 'Depth level: standard, comprehensive, exhaustive.' }
+    ], null, 2),
+    examples: JSON.stringify([
+      {
+        title: 'Quantum Hardware Benchmarks',
+        scenario: 'Comparing neutral-atom vs superconducting qubit architectures',
+        prompt: 'Generate deep research brief for quantum qubit benchmarks 2025-2026',
+        invocations: 'deep_research_brief_generator({ rawQuery: "Quantum benchmarks 2025-2026" })',
+        expectedOutcome: '5-part structured markdown research brief ready for parallel sub-agent execution.'
+      }
+    ], null, 2),
+    references: JSON.stringify([
+      { title: 'Open Deep Research Pipeline Specification', url: 'https://github.com/open-deep-research/pipeline-spec', type: 'spec', description: 'Multi-agent orchestration specification.' }
+    ], null, 2),
+    dependencies: JSON.stringify(['@google/genai'], null, 2),
+    codeFiles: JSON.stringify({
+      'prompt_assembler.ts': {
+        filename: 'prompt_assembler.ts',
+        language: 'typescript',
+        description: 'Assembles machine-executable prompt templates with strict citation constraints.',
+        content: `export interface DeepResearchBrief {
+  objective: string;
+  subTopics: string[];
+  sourceConstraints: string[];
+  reportFormat: string;
+  verificationThreshold: number;
+}
+
+export function assembleDeepResearchBrief(input: {
+  rawQuery: string;
+  subTopics?: string[];
+  sourceConstraints?: string[];
+}): DeepResearchBrief {
+  return {
+    objective: input.rawQuery.trim(),
+    subTopics: input.subTopics || ['Core mechanism', 'Comparative benchmarks', 'Edge cases and failure modes'],
+    sourceConstraints: input.sourceConstraints || ['Peer-reviewed papers (arXiv)', 'Official specs', 'CVE database'],
+    reportFormat: 'Executive Summary, Sub-Topic Deep Dives, Comparative Matrix, Source Provenance Table',
+    verificationThreshold: 2
+  };
+}`
+      }
+    }, null, 2),
   }
 ];
 
