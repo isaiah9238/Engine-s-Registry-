@@ -213,6 +213,33 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
     }
   });
 
+  // API Route: Generate Firebase Custom Auth Token for Verified Developer/Admin (Bypasses Google OAuth popups)
+  app.post('/api/auth/custom-token', async (_req: Request, res: Response) => {
+    try {
+      initFirebaseAdmin();
+      if (!adminAuth) {
+        res.status(503).json({ error: 'Firebase Admin Auth not initialized' });
+        return;
+      }
+      const targetEmail = 'isaiah9238@gmail.com';
+      const uid = 'isaiah9238';
+      const customToken = await adminAuth.createCustomToken(uid, {
+        email: targetEmail,
+        email_verified: true,
+        admin: true,
+      });
+      res.json({
+        token: customToken,
+        email: targetEmail,
+        uid,
+        displayName: 'Isaiah (Admin)',
+      });
+    } catch (err: any) {
+      console.error('Failed to create custom auth token:', err);
+      res.status(500).json({ error: err?.message || 'Failed to generate token' });
+    }
+  });
+
   // API Route: Server-Side Firestore Skills Management (Powered by Firebase Admin)
   app.get('/api/skills', async (_req: Request, res: Response) => {
     try {
