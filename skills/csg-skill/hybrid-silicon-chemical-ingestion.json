@@ -1,0 +1,300 @@
+{
+  "registryVersion": "2.0.0",
+  "suite": "hybrid-silicon-chemical-architecture",
+  "totalSkills": 4,
+  "updatedAt": "2026-10-28T15:00:00.000Z",
+  "skills": [
+    {
+      "id": "iontronic-state-evaluator",
+      "name": "iontronic-state-evaluator",
+      "title": "Iontronic State & Memory Telemetry Evaluator",
+      "description": "Evaluates ECRAM and polymer channel conductance in mS (G = I/V), measures synaptic weight shifts, and estimates ion diffusion half-life.",
+      "category": "telemetry-and-sensing",
+      "version": "1.0.0",
+      "status": "published",
+      "isPublic": true,
+      "securityClearance": "public",
+      "isExecutable": true,
+      "runtime": "in_process",
+      "tags": [
+        "iontronics",
+        "ECRAM",
+        "conductance-sensing",
+        "synaptic-weight"
+      ],
+      "priority": 2,
+      "thermodynamicFootprint": "low",
+      "requiresHumanReview": false,
+      "integrityManifest": {
+        "algorithm": "SHA-256",
+        "sha256": "51acc9c863998a55582e2e8d4121a9dce7cddeb13aab4de74a5ecb4ced80d069",
+        "bytes": 4868
+      },
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "channelId": {
+            "type": "string",
+            "description": "Target iontronic memory channel or array sector ID."
+          },
+          "readVoltageVolts": {
+            "type": "number",
+            "description": "Small non-destructive read pulse voltage in Volts."
+          },
+          "measuredCurrentAmps": {
+            "type": "number",
+            "description": "Measured channel read current in Amperes."
+          },
+          "baselineConductanceMs": {
+            "type": "number",
+            "description": "Calibrated baseline conductance in mS."
+          },
+          "activeIonSpecies": {
+            "type": "string",
+            "enum": [
+              "Ca2+",
+              "H+",
+              "Li+",
+              "PEDOT:PSS_redox"
+            ],
+            "default": "Ca2+",
+            "description": "Dominant ion carrier species."
+          },
+          "samplingFrequencyHz": {
+            "type": "number",
+            "default": 100,
+            "description": "Sensor sampling rate in Hertz."
+          }
+        },
+        "required": [
+          "channelId",
+          "readVoltageVolts",
+          "measuredCurrentAmps",
+          "baselineConductanceMs"
+        ]
+      },
+      "bundleStoragePath": "gs://studio-alchemist-skills-registry/skills/iontronic-state-evaluator/",
+      "bundleFiles": {
+        "guidelinesMd": "gs://studio-alchemist-skills-registry/skills/iontronic-state-evaluator/guidelines.md",
+        "runtimeScript": "gs://studio-alchemist-skills-registry/skills/iontronic-state-evaluator/executor.ts"
+      },
+      "createdAt": "2026-10-28T11:36:00.000Z"
+    },
+    {
+      "id": "chemical-neuromodulation-engine",
+      "name": "chemical-neuromodulation-engine",
+      "title": "Chemical Neuromodulation & Plasticity Engine",
+      "description": "Calculates STDP shifts and dosing directives from speech context retention and prosody drift metrics.",
+      "category": "neuromodulation-decision",
+      "version": "1.0.0",
+      "status": "published",
+      "isPublic": true,
+      "securityClearance": "public",
+      "isExecutable": true,
+      "runtime": "in_process",
+      "tags": [
+        "neuromodulation",
+        "STDP",
+        "prosody-drift",
+        "context-retention"
+      ],
+      "priority": 1,
+      "thermodynamicFootprint": "low",
+      "requiresHumanReview": false,
+      "integrityManifest": {
+        "algorithm": "SHA-256",
+        "sha256": "46e45f1afaee6c98b6f0876d9e76491ea9be91217e5c8a2eadbdae30c3f873ee",
+        "bytes": 4178
+      },
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "contextRetentionScore": {
+            "type": "number",
+            "description": "Evaluated model speech retention score (0.0 - 1.0)."
+          },
+          "prosodyDriftIndex": {
+            "type": "number",
+            "description": "Acoustic drift/degradation index (0.0 - 1.0)."
+          },
+          "currentConductanceMs": {
+            "type": "number",
+            "description": "Real-time measured channel conductance in mS."
+          },
+          "targetIonSpecies": {
+            "type": "string",
+            "enum": [
+              "Ca2+",
+              "H+",
+              "Li+",
+              "redox_agent"
+            ],
+            "default": "Ca2+",
+            "description": "Preferred ion species for tuning plasticity."
+          },
+          "targetPlasticityRate": {
+            "type": "string",
+            "enum": [
+              "low",
+              "moderate",
+              "rapid"
+            ],
+            "default": "moderate",
+            "description": "Desired adaptation velocity."
+          }
+        },
+        "required": [
+          "contextRetentionScore",
+          "prosodyDriftIndex",
+          "currentConductanceMs"
+        ]
+      },
+      "bundleStoragePath": "gs://studio-alchemist-skills-registry/skills/chemical-neuromodulation-engine/",
+      "bundleFiles": {
+        "guidelinesMd": "gs://studio-alchemist-skills-registry/skills/chemical-neuromodulation-engine/guidelines.md",
+        "runtimeScript": "gs://studio-alchemist-skills-registry/skills/chemical-neuromodulation-engine/executor.ts"
+      },
+      "createdAt": "2026-10-28T11:36:00.000Z"
+    },
+    {
+      "id": "microfluidic-actuation-controller",
+      "name": "microfluidic-actuation-controller",
+      "title": "Microfluidic Actuation & Dosing Controller",
+      "description": "Controls microfluidic pump rates and electrochemical gate voltages for modulating chemical dosing (Ca2+, H+, Li+) and self-cleaning flushes.",
+      "category": "hardware-interop",
+      "version": "1.0.0",
+      "status": "published",
+      "isPublic": true,
+      "securityClearance": "internal",
+      "isExecutable": true,
+      "runtime": "in_process",
+      "tags": [
+        "microfluidics",
+        "neuromodulation",
+        "hardware-control",
+        "chemical-memory"
+      ],
+      "priority": 1,
+      "thermodynamicFootprint": "low",
+      "requiresHumanReview": false,
+      "integrityManifest": {
+        "algorithm": "SHA-256",
+        "sha256": "f95c9a358e6853599502b7195ef5bd8ab2402d13f72f7561b09a612700bc7193",
+        "bytes": 3215
+      },
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "targetIon": {
+            "type": "string",
+            "enum": [
+              "Ca2+",
+              "H+",
+              "Li+",
+              "PEDOT_DOPANT",
+              "NEUTRALIZER"
+            ],
+            "description": "Chemical species to dose into the memory cell."
+          },
+          "dosingVolumeNl": {
+            "type": "number",
+            "description": "Volume of chemical solution in nanoliters."
+          },
+          "currentConductanceMs": {
+            "type": "number",
+            "description": "Measured channel conductance in mS."
+          },
+          "targetConductanceMs": {
+            "type": "number",
+            "description": "Target channel conductance in mS."
+          },
+          "safetyThresholdMs": {
+            "type": "number",
+            "default": 100.0,
+            "description": "Maximum safe conductance limit in mS before auto-flush."
+          }
+        },
+        "required": [
+          "targetIon",
+          "dosingVolumeNl",
+          "currentConductanceMs",
+          "targetConductanceMs"
+        ]
+      },
+      "bundleStoragePath": "gs://studio-alchemist-skills-registry/skills/microfluidic-actuation-controller/",
+      "bundleFiles": {
+        "guidelinesMd": "gs://studio-alchemist-skills-registry/skills/microfluidic-actuation-controller/guidelines.md",
+        "runtimeScript": "gs://studio-alchemist-skills-registry/skills/microfluidic-actuation-controller/executor.ts"
+      },
+      "createdAt": "2026-10-28T11:36:00.000Z"
+    },
+    {
+      "id": "generative-speech-silicon-bridge",
+      "name": "generative-speech-silicon-bridge",
+      "title": "Generative Speech Silicon-Chemical Bridge",
+      "description": "Modulates digital speech token generation based on chemical conductance levels and writes acoustic cadence back into memory.",
+      "category": "hardware-interop",
+      "version": "1.0.0",
+      "status": "published",
+      "isPublic": true,
+      "securityClearance": "public",
+      "isExecutable": true,
+      "runtime": "in_process",
+      "tags": [
+        "generative-speech",
+        "chemical-memory",
+        "analog-computing",
+        "prosody-control"
+      ],
+      "priority": 2,
+      "thermodynamicFootprint": "low",
+      "requiresHumanReview": false,
+      "integrityManifest": {
+        "algorithm": "SHA-256",
+        "sha256": "27dbd900a135f9f000fcfd27630a9d8ae6242687c1e124288fcc39de06602d00",
+        "bytes": 4482
+      },
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "phoneticTokens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Sequence of generated speech audio tokens or phonetic embeddings."
+          },
+          "measuredConductanceMs": {
+            "type": "number",
+            "description": "Real-time analog conductance from chemical substrate in mS."
+          },
+          "targetProsodyVariance": {
+            "type": "number",
+            "default": 0.5,
+            "description": "Prosody variation coefficient (range 0.0 - 1.0)."
+          },
+          "pulseDurationMs": {
+            "type": "number",
+            "default": 10.0,
+            "description": "Duration of voltage/current pulses written to memory in ms."
+          },
+          "enableAnalogFeedback": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enables real-time analog memory feedback during audio token streaming."
+          }
+        },
+        "required": [
+          "phoneticTokens",
+          "measuredConductanceMs"
+        ]
+      },
+      "bundleStoragePath": "gs://studio-alchemist-skills-registry/skills/generative-speech-silicon-bridge/",
+      "bundleFiles": {
+        "guidelinesMd": "gs://studio-alchemist-skills-registry/skills/generative-speech-silicon-bridge/guidelines.md",
+        "runtimeScript": "gs://studio-alchemist-skills-registry/skills/generative-speech-silicon-bridge/executor.ts"
+      },
+      "createdAt": "2026-10-28T11:36:00.000Z"
+    }
+  ]
+}

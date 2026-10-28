@@ -1,0 +1,68 @@
+{
+  "id": "generative-speech-silicon-bridge",
+  "name": "generative-speech-silicon-bridge",
+  "title": "Generative Speech Silicon-Chemical Bridge",
+  "description": "Modulates digital speech token generation based on chemical conductance levels and writes acoustic cadence back into memory.",
+  "category": "hardware-interop",
+  "version": "1.0.0",
+  "status": "published",
+  "isPublic": true,
+  "securityClearance": "public",
+  "isExecutable": true,
+  "runtime": "in_process",
+  "tags": [
+    "generative-speech",
+    "chemical-memory",
+    "analog-computing",
+    "prosody-control"
+  ],
+  "priority": 2,
+  "thermodynamicFootprint": "low",
+  "requiresHumanReview": false,
+  "integrityManifest": {
+    "algorithm": "SHA-256",
+    "sha256": "27dbd900a135f9f000fcfd27630a9d8ae6242687c1e124288fcc39de06602d00",
+    "bytes": 4482
+  },
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "phoneticTokens": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Sequence of generated speech audio tokens or phonetic embeddings."
+      },
+      "measuredConductanceMs": {
+        "type": "number",
+        "description": "Real-time analog conductance from chemical substrate in mS."
+      },
+      "targetProsodyVariance": {
+        "type": "number",
+        "default": 0.5,
+        "description": "Prosody variation coefficient (range 0.0 - 1.0)."
+      },
+      "pulseDurationMs": {
+        "type": "number",
+        "default": 10.0,
+        "description": "Duration of voltage/current pulses written to memory in ms."
+      },
+      "enableAnalogFeedback": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enables real-time analog memory feedback during audio token streaming."
+      }
+    },
+    "required": [
+      "phoneticTokens",
+      "measuredConductanceMs"
+    ]
+  },
+  "bundleStoragePath": "gs://studio-alchemist-skills-registry/skills/generative-speech-silicon-bridge/",
+  "bundleFiles": {
+    "guidelinesMd": "gs://studio-alchemist-skills-registry/skills/generative-speech-silicon-bridge/guidelines.md",
+    "runtimeScript": "gs://studio-alchemist-skills-registry/skills/generative-speech-silicon-bridge/executor.ts"
+  },
+  "createdAt": "2026-10-28T11:36:00.000Z"
+}
