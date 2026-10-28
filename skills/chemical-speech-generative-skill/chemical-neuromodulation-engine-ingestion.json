@@ -1,0 +1,60 @@
+{
+  "id": "chemical-neuromodulation-engine",
+  "name": "chemical_neuromodulation_engine",
+  "title": "Chemical Neuromodulation & Plasticity Engine",
+  "description": "Calculates STDP shifts and dosing directives from speech context retention and prosody drift metrics.",
+  "category": "neuromodulation-decision",
+  "version": "1.0.0",
+  "status": "published",
+  "isPublic": true,
+  "securityClearance": "public",
+  "isExecutable": true,
+  "runtime": "in_process",
+  "tags": [
+    "neuromodulation",
+    "STDP",
+    "prosody-drift",
+    "context-retention"
+  ],
+  "priority": 2,
+  "thermodynamicFootprint": "low",
+  "requiresHumanReview": false,
+  "integrityManifest": {
+    "algorithm": "SHA-256",
+    "sha256": "46e45f1afaee6c98b6f0876d9e76491ea9be91217e5c8a2eadbdae30c3f873ee",
+    "bytes": 4178
+  },
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "contextRetentionScore": {
+        "type": "number",
+        "description": "Evaluated model speech retention score (0.0 - 1.0)."
+      },
+      "prosodyDriftIndex": {
+        "type": "number",
+        "description": "Acoustic drift/degradation index (0.0 - 1.0)."
+      },
+      "currentConductanceMs": {
+        "type": "number",
+        "description": "Real-time measured channel conductance in mS."
+      },
+      "targetIonSpecies": {
+        "type": "string",
+        "default": "Ca2+",
+        "description": "Preferred ion species for tuning plasticity."
+      }
+    },
+    "required": [
+      "contextRetentionScore",
+      "prosodyDriftIndex",
+      "currentConductanceMs"
+    ]
+  },
+  "bundleStoragePath": "gs://studio-alchemist-skills-registry/skills/chemical-neuromodulation-engine/",
+  "bundleFiles": {
+    "guidelinesMd": "gs://studio-alchemist-skills-registry/skills/chemical-neuromodulation-engine/guidelines.md",
+    "runtimeScript": "gs://studio-alchemist-skills-registry/skills/chemical-neuromodulation-engine/executor.ts"
+  },
+  "createdAt": "2026-10-28T11:36:00.000Z"
+}

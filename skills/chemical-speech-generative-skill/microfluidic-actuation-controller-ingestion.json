@@ -1,0 +1,72 @@
+{
+  "id": "microfluidic-actuation-controller",
+  "name": "microfluidic_actuation_controller",
+  "title": "Microfluidic Actuation & Dosing Controller",
+  "description": "Controls microfluidic pump rates and electrochemical gate voltages for modulating chemical dosing (Ca2+, H+, Li+) and self-cleaning flushes.",
+  "category": "hardware-interop",
+  "version": "1.0.0",
+  "status": "published",
+  "isPublic": true,
+  "securityClearance": "public",
+  "isExecutable": true,
+  "runtime": "in_process",
+  "tags": [
+    "microfluidics",
+    "neuromodulation",
+    "hardware-control",
+    "chemical-memory"
+  ],
+  "priority": 2,
+  "thermodynamicFootprint": "low",
+  "requiresHumanReview": false,
+  "integrityManifest": {
+    "algorithm": "SHA-256",
+    "sha256": "f95c9a358e6853599502b7195ef5bd8ab2402d13f72f7561b09a612700bc7193",
+    "bytes": 3215
+  },
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "targetIon": {
+        "type": "string",
+        "enum": [
+          "Ca2+",
+          "H+",
+          "Li+",
+          "PEDOT_DOPANT",
+          "NEUTRALIZER"
+        ],
+        "description": "Chemical species to dose into the memory cell."
+      },
+      "dosingVolumeNl": {
+        "type": "number",
+        "description": "Volume of chemical solution in nanoliters."
+      },
+      "currentConductivity": {
+        "type": "number",
+        "description": "Measured conductivity in mS/cm."
+      },
+      "targetConductivity": {
+        "type": "number",
+        "description": "Target conductivity in mS/cm."
+      },
+      "safetyThreshold": {
+        "type": "number",
+        "default": 100.0,
+        "description": "Maximum safe conductivity limit before auto-flush."
+      }
+    },
+    "required": [
+      "targetIon",
+      "dosingVolumeNl",
+      "currentConductivity",
+      "targetConductivity"
+    ]
+  },
+  "bundleStoragePath": "gs://studio-alchemist-skills-registry/skills/microfluidic-actuation-controller/",
+  "bundleFiles": {
+    "guidelinesMd": "gs://studio-alchemist-skills-registry/skills/microfluidic-actuation-controller/guidelines.md",
+    "runtimeScript": "gs://studio-alchemist-skills-registry/skills/microfluidic-actuation-controller/executor.ts"
+  },
+  "createdAt": "2026-10-28T11:36:00.000Z"
+}

@@ -1,0 +1,66 @@
+{
+  "id": "iontronic-state-evaluator",
+  "name": "iontronic_state_evaluator",
+  "title": "Iontronic State & Conductance Evaluator",
+  "description": "Evaluates ECRAM and polymer channel conductance (G = I/V), measures synaptic weight shifts, and estimates ion diffusion half-life.",
+  "category": "telemetry-and-sensing",
+  "version": "1.0.0",
+  "status": "published",
+  "isPublic": true,
+  "securityClearance": "public",
+  "isExecutable": true,
+  "runtime": "in_process",
+  "tags": [
+    "iontronics",
+    "ECRAM",
+    "conductance-sensing",
+    "synaptic-weight"
+  ],
+  "priority": 2,
+  "thermodynamicFootprint": "low",
+  "requiresHumanReview": false,
+  "integrityManifest": {
+    "algorithm": "SHA-256",
+    "sha256": "51acc9c863998a55582e2e8d4121a9dce7cddeb13aab4de74a5ecb4ced80d069",
+    "bytes": 4868
+  },
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "readVoltageVolts": {
+        "type": "number",
+        "description": "Small non-destructive read pulse voltage."
+      },
+      "measuredCurrentAmps": {
+        "type": "number",
+        "description": "Measured read current across channel."
+      },
+      "baselineConductanceMs": {
+        "type": "number",
+        "description": "Calibrated baseline conductance in mS."
+      },
+      "activeIonSpecies": {
+        "type": "string",
+        "enum": [
+          "Ca2+",
+          "H+",
+          "Li+",
+          "PEDOT:PSS"
+        ],
+        "description": "Dominant ion carrier species."
+      }
+    },
+    "required": [
+      "readVoltageVolts",
+      "measuredCurrentAmps",
+      "baselineConductanceMs",
+      "activeIonSpecies"
+    ]
+  },
+  "bundleStoragePath": "gs://studio-alchemist-skills-registry/skills/iontronic-state-evaluator/",
+  "bundleFiles": {
+    "guidelinesMd": "gs://studio-alchemist-skills-registry/skills/iontronic-state-evaluator/guidelines.md",
+    "runtimeScript": "gs://studio-alchemist-skills-registry/skills/iontronic-state-evaluator/executor.ts"
+  },
+  "createdAt": "2026-10-28T11:36:00.000Z"
+}
