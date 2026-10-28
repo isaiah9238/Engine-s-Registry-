@@ -71,37 +71,40 @@ function initFirebaseAdmin() {
       }
     }
 
-    if (!serviceAccount) {
-      console.error('[Firebase Admin] Initialization failed: No service account credentials found.');
-      return;
-    }
-
     const targetDatabaseId =
       process.env.FIRESTORE_DATABASE_ID || 'ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc';
+    const projectId =
+      serviceAccount?.project_id ||
+      process.env.FIREBASE_PROJECT_ID ||
+      'gen-lang-client-0573899362';
+
+    const appOptions: any = {
+      projectId,
+      storageBucket:
+        process.env.FIREBASE_STORAGEBUCKET || 'gen-lang-client-0573899362.firebasestorage.app',
+    };
+    if (serviceAccount) {
+      appOptions.credential = cert(serviceAccount);
+    }
 
     const adminApp =
       getAdminApps().length === 0
-        ? initAdminApp({
-            credential: cert(serviceAccount),
-            projectId: serviceAccount.project_id || 'gen-lang-client-0573899362',
-            storageBucket:
-              process.env.FIREBASE_STORAGEBUCKET || 'gen-lang-client-0573899362.firebasestorage.app',
-          })
+        ? initAdminApp(appOptions)
         : getAdminApp();
 
     adminDb = getAdminFirestore(adminApp, targetDatabaseId);
     adminAuth = getAdminAuth(adminApp);
     adminAppInfo = {
-      projectId: serviceAccount.project_id,
-      clientEmail: serviceAccount.client_email,
+      projectId,
+      clientEmail: serviceAccount?.client_email || 'cloud-environment-agent',
       databaseId: targetDatabaseId,
     };
 
     console.log(
-      `[Firebase Admin] Authenticated with Service Account (${serviceAccount.client_email}) for database ${targetDatabaseId}`
+      `[Firebase Admin] Initialized for project ${projectId} (database: ${targetDatabaseId})`
     );
   } catch (adminErr: any) {
-    console.error('[Firebase Admin] Fatal error during initialization:', adminErr?.message || adminErr);
+    console.error('[Firebase Admin] Initialization notice:', adminErr?.message || adminErr);
   }
 }
 
