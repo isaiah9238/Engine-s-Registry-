@@ -35,6 +35,8 @@ firebase-service-account.json
 serviceAccountKey.json
 serviceAccount*.json
 client_secret.json
+client_secret*.json
+public/assets/aistudio/*.json
 *-adminsdk-*.json
 .firebase/
 .npmrc

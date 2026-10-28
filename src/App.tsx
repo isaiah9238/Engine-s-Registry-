@@ -23,13 +23,21 @@ import {
   FolderGit2,
   GitBranch,
   BarChart3,
+  AlertTriangle,
+  Copy,
+  Check,
+  ExternalLink,
+  X,
 } from 'lucide-react';
 import type { SkillRecord, SkillStatus } from './types/skill';
 import {
   initAuth,
   googleSignIn,
+  instantAgentSignIn,
   logout,
   getAccessToken,
+  getAuthDiagnostics,
+  type AuthDiagnostic,
 } from './services/firebase';
 import {
   fetchAllSkills,
@@ -180,15 +188,39 @@ export default function App() {
     };
   }, [user]);
 
+  // Auth Diagnostic Banner State
+  const [authNotice, setAuthNotice] = useState<AuthDiagnostic | null>(null);
+  const [isCopiedHost, setIsCopiedHost] = useState(false);
+
   const handleSignIn = async () => {
+    setAuthNotice(null);
     try {
       const res = await googleSignIn();
       if (res) {
         setUser(res.user);
         setAccessToken(res.accessToken);
+        setAuthNotice(null);
       }
     } catch (err: any) {
       console.error('Sign in error:', err);
+      const diag = getAuthDiagnostics(err);
+      setAuthNotice(diag);
+    }
+  };
+
+  const handleInstantAgentSignIn = async () => {
+    setAuthNotice(null);
+    try {
+      const res = await instantAgentSignIn();
+      if (res) {
+        setUser(res.user);
+        setAccessToken(res.accessToken);
+        setAuthNotice(null);
+      }
+    } catch (err: any) {
+      console.error('Instant agent sign in error:', err);
+      const diag = getAuthDiagnostics(err);
+      setAuthNotice(diag);
     }
   };
 
@@ -196,6 +228,7 @@ export default function App() {
     await logout();
     setUser(null);
     setAccessToken(null);
+    setAuthNotice(null);
   };
 
   const handleSaveSkill = async (newSkill: SkillRecord) => {
@@ -301,6 +334,7 @@ export default function App() {
       <Navbar
         user={user}
         onSignIn={handleSignIn}
+        onInstantAgentSignIn={handleInstantAgentSignIn}
         onSignOut={handleSignOut}
         onOpenNewSkill={() => {
           setEditingSkill(null);
@@ -327,6 +361,90 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Authorization Diagnostic Banner */}
+        {authNotice && (
+          <div className="p-4 sm:p-5 rounded-2xl border border-amber-300 dark:border-amber-700/80 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 shadow-md">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-amber-200 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-sm font-bold tracking-tight">
+                      Authentication &amp; Authorization Notice
+                    </h4>
+                    {authNotice.code && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-200/80 dark:bg-amber-900/70 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200">
+                        {authNotice.code}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                    {authNotice.message}
+                  </p>
+                  <div className="pt-1.5 text-xs font-medium text-amber-950 dark:text-amber-100 flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span>{authNotice.action}</span>
+                    {authNotice.hostname && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(authNotice.hostname || window.location.hostname);
+                          setIsCopiedHost(true);
+                          setTimeout(() => setIsCopiedHost(false), 2500);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-950/80 shadow-xs cursor-pointer w-fit"
+                      >
+                        {isCopiedHost ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Copied Host!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy: {authNotice.hostname}</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <div className="pt-2 flex flex-wrap items-center gap-2.5">
+                    <button
+                      onClick={handleInstantAgentSignIn}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>1-Click Bypass: Authorize (isaiah9238)</span>
+                    </button>
+                    <button
+                      onClick={handleSignIn}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                    >
+                      Retry Google Sign-In
+                    </button>
+                    <a
+                      href="https://console.firebase.google.com/project/gen-lang-client-0573899362/authentication/settings"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-amber-100/60 dark:hover:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-medium text-amber-900 dark:text-amber-200 transition-all"
+                    >
+                      <span>Open Firebase Console Settings</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setAuthNotice(null)}
+                className="p-1 text-amber-700 dark:text-amber-300 hover:bg-amber-200/60 dark:hover:bg-amber-900/60 rounded-lg transition-colors cursor-pointer"
+                aria-label="Dismiss notice"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Workspace Mode Switcher: Registry Grid vs Mind Map Architect vs Vector Engine vs Analytics */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-2">
