@@ -13,6 +13,7 @@ import {
   type User,
 } from 'firebase/auth';
 import {
+  initializeFirestore,
   getFirestore,
   doc,
   getDoc,
@@ -76,10 +77,23 @@ if (typeof window !== 'undefined' && appCheckDebugToken) {
   }
 }
 
-// Initialize Firestore compliant with SKILL.md specification
-export const db: Firestore = (resolvedConfig as any).firestoreDatabaseId
-  ? getFirestore(app, (resolvedConfig as any).firestoreDatabaseId)
-  : getFirestore(app);
+// Initialize Firestore with robust long-polling to prevent proxy/streaming connection timeouts
+export const db: Firestore = (() => {
+  const dbId = (resolvedConfig as any).firestoreDatabaseId || undefined;
+  try {
+    return initializeFirestore(
+      app,
+      {
+        experimentalForceLongPolling: true,
+        experimentalAutoDetectLongPolling: true,
+      },
+      dbId
+    );
+  } catch (err) {
+    console.warn('initializeFirestore fallback to getFirestore:', err);
+    return dbId ? getFirestore(app, dbId) : getFirestore(app);
+  }
+})();
 
 // Initialize Firebase Cloud Storage for skill bundles (/skills/{skillId}/)
 export const storage: FirebaseStorage = getStorage(app);
