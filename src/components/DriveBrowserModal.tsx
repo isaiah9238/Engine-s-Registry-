@@ -203,8 +203,20 @@ export const DriveBrowserModal: React.FC<DriveBrowserModalProps> = ({
                 )}
 
                 {errorMsg && (
-                  <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 text-xs">
-                    {errorMsg}
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 text-xs flex flex-col gap-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 break-words">{errorMsg}</div>
+                    </div>
+                    {(errorMsg.toLowerCase().includes('scope') || errorMsg.includes('403') || errorMsg.toLowerCase().includes('permission')) && (
+                      <button
+                        onClick={onRequireAuth}
+                        className="self-start px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs"
+                      >
+                        <HardDrive className="w-3.5 h-3.5" />
+                        <span>Grant Google Drive Permission & Re-sync</span>
+                      </button>
+                    )}
                   </div>
                 )}
 

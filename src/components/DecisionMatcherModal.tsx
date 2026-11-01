@@ -55,8 +55,8 @@ export const DecisionMatcherModal: React.FC<DecisionMatcherModalProps> = ({
 
   const handleEvaluate = (inputQuery?: string) => {
     const q = inputQuery !== undefined ? inputQuery : queryText;
-    if (!q.trim()) return;
-    const evaluated = evaluateBestSkillForJob(q, skills);
+    if (!q || !q.trim()) return;
+    const evaluated = evaluateBestSkillForJob(q, skills || []);
     setResults(evaluated);
     setHasEvaluated(true);
   };

@@ -137,10 +137,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     const map = new Map<string, { count: number; invocations: number; skills: SkillRecord[] }>();
 
     skills.forEach((skill) => {
+      if (!skill) return;
       const cat = skill.category || 'general';
       const current = map.get(cat) || { count: 0, invocations: 0, skills: [] };
       // Weight by length of description and parameter presence
-      const estimatedUsage = 85 + (skill.title.length % 19) * 14;
+      const estimatedUsage = 85 + ((skill.title || skill.name || '').length % 19) * 14;
       current.count += 1;
       current.invocations += estimatedUsage;
       current.skills.push(skill);
@@ -186,18 +187,21 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const rankedSkills = useMemo(() => {
     return skills
       .filter((s) => {
+        if (!s) return false;
         const matchesCat = selectedCategoryFilter === 'All' || s.category === selectedCategoryFilter;
         const matchesVersion = selectedVersionFilter === 'All' || (s.version || '1.0.0') === selectedVersionFilter;
+        const sQuery = (searchQuery || '').toLowerCase().trim();
         const matchesQuery =
-          !searchQuery.trim() ||
-          s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (s.version && s.version.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          s.category.toLowerCase().includes(searchQuery.toLowerCase());
+          !sQuery ||
+          (s.title || '').toLowerCase().includes(sQuery) ||
+          (s.name || '').toLowerCase().includes(sQuery) ||
+          (s.version ? s.version.toLowerCase().includes(sQuery) : false) ||
+          (s.category || '').toLowerCase().includes(sQuery);
         return matchesCat && matchesVersion && matchesQuery;
       })
       .map((s) => {
-        const seedValue = (s.name.charCodeAt(0) * 13 + s.name.length * 37) % 73;
+        const sName = s.name || s.id || 'skill';
+        const seedValue = (sName.charCodeAt(0) * 13 + sName.length * 37) % 73;
         const invocations = 45 + seedValue * 8;
         const successRate = 97.2 + (seedValue % 5) * 0.55;
         const latency = 68 + (seedValue % 9) * 14;

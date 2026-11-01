@@ -166,13 +166,33 @@ export const WorkspaceExportModal: React.FC<WorkspaceExportModalProps> = ({
             )}
 
             {errorMessage && (
-              <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200">
-                {errorMessage}
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 flex flex-col gap-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 break-words">{errorMessage}</div>
+                </div>
+                {(errorMessage.toLowerCase().includes('scope') || errorMessage.includes('403') || errorMessage.toLowerCase().includes('permission')) && (
+                  <button
+                    onClick={onRequireAuth}
+                    className="self-start px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs"
+                  >
+                    <HardDrive className="w-3.5 h-3.5" />
+                    <span>Grant Google Workspace Permissions</span>
+                  </button>
+                )}
               </div>
             )}
 
             {mode === 'drive' ? (
               <div className="space-y-4">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 flex items-start gap-2.5">
+                  <HardDrive className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-slate-900 dark:text-white block mb-0.5">Cold Archive &amp; Backup Pipeline:</span>
+                    Cloud Firestore DB is your <strong>Primary Registry</strong> queried by AI Studio Agents at runtime. Exporting to Google Drive creates an optional, cold human-readable archive (.md or .json) for external documentation.
+                  </div>
+                </div>
+
                 <div>
                   <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-2">
                     Select File Package Format:

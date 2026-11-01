@@ -15,7 +15,7 @@ import type { AgentMemoryRecord, MemoryVectorSearchResult, ToolVectorSearchResul
 export function generateDeterministicVector768(text: string): number[] {
   const dim = 768;
   const vector = new Float64Array(dim);
-  const clean = text.toLowerCase().trim();
+  const clean = (text || '').toLowerCase().trim();
 
   // Multi-pass hash accumulator
   for (let i = 0; i < clean.length; i++) {
@@ -116,21 +116,24 @@ export function rankSkillsByVector(
   skills: SkillRecord[],
   topK = 5
 ): ToolVectorSearchResult[] {
-  const scored = skills.map((skill) => {
+  const scored = (skills || []).map((skill) => {
+    const title = skill.title || skill.name || 'Untitled Skill';
+    const desc = skill.description || '';
+    const cat = skill.category || '';
     // If skill doesn't have an embedding yet, generate a deterministic one from its title and description
     const skillVec = skill.embedding && skill.embedding.length === 768
       ? skill.embedding
-      : generateDeterministicVector768(`${skill.title} ${skill.description} ${skill.category}`);
+      : generateDeterministicVector768(`${title} ${desc} ${cat}`);
 
     const sim = cosineSimilarity(queryEmbedding, skillVec);
     // Convert cosine similarity [-1, 1] to normalized relevance score [0, 1]
     const normalizedScore = Math.max(0, (sim + 1) / 2);
 
     return {
-      skillId: skill.id,
-      skillName: skill.name,
-      skillTitle: skill.title,
-      description: skill.description,
+      skillId: skill.id || skill.name || 'unknown',
+      skillName: skill.name || 'unnamed_skill',
+      skillTitle: title,
+      description: desc,
       similarity: Number(normalizedScore.toFixed(4)),
       parametersSchema: skill.parametersSchema || {},
       bundleStoragePath: skill.bundleStoragePath || `gs://gen-lang-client-0573899362.firebasestorage.app/skills/${skill.id}/`,

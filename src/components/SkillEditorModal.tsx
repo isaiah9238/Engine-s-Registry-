@@ -13,6 +13,8 @@ import {
   Trash2,
   Cpu,
   Layers,
+  FileUp,
+  Upload,
 } from 'lucide-react';
 import type {
   SkillRecord,
@@ -48,6 +50,9 @@ export const SkillEditorModal: React.FC<SkillEditorModalProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [importNotice, setImportNotice] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -64,6 +69,137 @@ export const SkillEditorModal: React.FC<SkillEditorModalProps> = ({
   const [examples, setExamples] = useState<SkillExample[]>([]);
   const [references, setReferences] = useState<SkillReference[]>([]);
   const [codeFiles, setCodeFiles] = useState<Record<string, SkillCodeFile>>({});
+
+  const processUploadedFile = (filename: string, content: string) => {
+    setImportNotice(null);
+    try {
+      const trimmed = content.trim();
+      if (filename.endsWith('.json') || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+        const parsedJson = JSON.parse(content);
+        // Case A: Full bundle export package
+        if (parsedJson.skillRecord) {
+          const rec: SkillRecord = parsedJson.skillRecord;
+          if (rec.skillMarkdown) setRawMarkdown(rec.skillMarkdown);
+          if (rec.name) setName(rec.name);
+          if (rec.title) setTitle(rec.title);
+          if (rec.description) setDescription(rec.description);
+          if (rec.category) setCategory(rec.category);
+          if (rec.version) setVersion(rec.version);
+          if (rec.securityClearance) setSecurityClearance(rec.securityClearance);
+          if (rec.isExecutable !== undefined) setIsExecutable(rec.isExecutable);
+          if (rec.runtime) setRuntime(rec.runtime);
+          if (rec.sourceReferences) setSourceReferencesStr(rec.sourceReferences.join('\n'));
+          if (rec.returns) setReturnsSchemaStr(rec.returns);
+          if (rec.parameters) {
+            try { setParameters(typeof rec.parameters === 'string' ? JSON.parse(rec.parameters) : rec.parameters); } catch {}
+          }
+          if (rec.examples) {
+            try { setExamples(typeof rec.examples === 'string' ? JSON.parse(rec.examples) : rec.examples); } catch {}
+          }
+          if (rec.references) {
+            try { setReferences(typeof rec.references === 'string' ? JSON.parse(rec.references) : rec.references); } catch {}
+          }
+          if (rec.codeFiles) {
+            try { setCodeFiles(typeof rec.codeFiles === 'string' ? JSON.parse(rec.codeFiles) : rec.codeFiles); } catch {}
+          }
+          setImportNotice(`Loaded package '${filename}' with full SKILL.md and metadata.`);
+          return;
+        }
+
+        // Case B: Direct skill manifest or ingestion summary JSON
+        if (parsedJson.name || parsedJson.title || parsedJson.id) {
+          setName(parsedJson.name || parsedJson.id || filename.replace(/\.[^/.]+$/, ''));
+          setTitle(parsedJson.title || parsedJson.name || 'Imported Skill');
+          setDescription(parsedJson.description || '');
+          if (parsedJson.category) setCategory(parsedJson.category);
+          if (parsedJson.version) setVersion(parsedJson.version);
+          if (parsedJson.securityClearance) setSecurityClearance(parsedJson.securityClearance);
+          if (parsedJson.isExecutable !== undefined) setIsExecutable(parsedJson.isExecutable);
+          if (parsedJson.runtime) setRuntime(parsedJson.runtime);
+          if (parsedJson.parameters) {
+            setParameters(Array.isArray(parsedJson.parameters) ? parsedJson.parameters : []);
+          }
+          if (parsedJson.examples) {
+            setExamples(Array.isArray(parsedJson.examples) ? parsedJson.examples : []);
+          }
+          if (parsedJson.skillMarkdown) {
+            setRawMarkdown(parsedJson.skillMarkdown);
+          } else {
+            const synthesized = generateSkillMarkdown({
+              name: parsedJson.name || parsedJson.id,
+              title: parsedJson.title,
+              description: parsedJson.description,
+              category: parsedJson.category || 'orchestration',
+              version: parsedJson.version || '1.0.0',
+              securityClearance: parsedJson.securityClearance || 'public',
+              isExecutable: parsedJson.isExecutable ?? true,
+              runtime: parsedJson.runtime || 'in_process',
+              parameters: JSON.stringify(parsedJson.parameters || []),
+              examples: JSON.stringify(parsedJson.examples || []),
+              references: JSON.stringify(parsedJson.references || []),
+              returns: parsedJson.returns || returnsSchemaStr,
+            });
+            setRawMarkdown(synthesized);
+          }
+          setImportNotice(`Imported JSON schema '${filename}' and synthesized SKILL.md.`);
+          return;
+        }
+      }
+
+      // Case C: Standard SKILL.md Markdown
+      setRawMarkdown(content);
+      const parsed = parseSkillMarkdown(content, currentUserId);
+      if (parsed.skill.name) setName(parsed.skill.name);
+      if (parsed.skill.title) setTitle(parsed.skill.title);
+      if (parsed.skill.description) setDescription(parsed.skill.description);
+      if (parsed.skill.category) setCategory(parsed.skill.category);
+      if (parsed.skill.version) setVersion(parsed.skill.version);
+      if (parsed.skill.securityClearance) setSecurityClearance(parsed.skill.securityClearance);
+      if (parsed.skill.isExecutable !== undefined) setIsExecutable(parsed.skill.isExecutable);
+      if (parsed.skill.runtime) setRuntime(parsed.skill.runtime);
+      if (parsed.skill.sourceReferences) setSourceReferencesStr(parsed.skill.sourceReferences.join('\n'));
+      if (parsed.skill.returns) setReturnsSchemaStr(parsed.skill.returns);
+      try {
+        if (parsed.skill.parameters) setParameters(JSON.parse(parsed.skill.parameters));
+        if (parsed.skill.examples) setExamples(JSON.parse(parsed.skill.examples));
+        if (parsed.skill.references) setReferences(JSON.parse(parsed.skill.references));
+        if (parsed.skill.codeFiles) setCodeFiles(JSON.parse(parsed.skill.codeFiles));
+      } catch {}
+      setImportNotice(`Imported '${filename}' with YAML frontmatter & markdown sections parsed.`);
+    } catch (err: any) {
+      console.error('File import error:', err);
+      setImportNotice(`Failed to parse '${filename}': ${err.message}`);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        processUploadedFile(file.name, text);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        processUploadedFile(file.name, text);
+      }
+    };
+    reader.readAsText(file);
+  };
 
   useEffect(() => {
     if (initialSkill) {
@@ -362,6 +498,24 @@ Describe what this skill executes, its preconditions, and output quality standar
               </button>
             </div>
 
+            {/* Hidden file input for .md and .json import */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileInputChange}
+              accept=".md,.markdown,.json,text/markdown,application/json"
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-indigo-200 dark:border-indigo-800/80 shadow-xs"
+              title="Import local .md (SKILL.md) or .json specification"
+            >
+              <FileUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>Import File</span>
+            </button>
+
             <button
               onClick={onClose}
               className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-800 cursor-pointer"
@@ -371,8 +525,38 @@ Describe what this skill executes, its preconditions, and output quality standar
           </div>
         </div>
 
-        {/* Content Body */}
-        <div className="flex-1 p-6 overflow-y-auto bg-slate-50/50 dark:bg-slate-950/50 space-y-4">
+        {/* Content Body with Drag-and-Drop */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          className={`flex-1 p-6 overflow-y-auto bg-slate-50/50 dark:bg-slate-950/50 space-y-4 relative transition-colors ${
+            isDragging ? 'ring-2 ring-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/30' : ''
+          }`}
+        >
+          {isDragging && (
+            <div className="absolute inset-0 z-20 bg-indigo-950/70 backdrop-blur-xs flex flex-col items-center justify-center text-white pointer-events-none">
+              <Upload className="w-10 h-10 mb-2 animate-bounce text-indigo-400" />
+              <p className="text-sm font-bold">Drop SKILL.md or .json manifest here</p>
+              <p className="text-xs text-indigo-200">Automatically parses schemas, parameters, and frontmatter</p>
+            </div>
+          )}
+
+          {importNotice && (
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-xl text-indigo-800 dark:text-indigo-200 text-xs flex items-center justify-between gap-2 shadow-xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span className="font-medium">{importNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImportNotice(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer text-xs"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
           {mode === 'markdown' ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs">

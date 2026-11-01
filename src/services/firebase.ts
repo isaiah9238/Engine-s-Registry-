@@ -85,7 +85,6 @@ export const db: Firestore = (() => {
       app,
       {
         experimentalForceLongPolling: true,
-        experimentalAutoDetectLongPolling: true,
       },
       dbId
     );
@@ -102,15 +101,29 @@ export const storageBucketUrl: string =
 
 export const auth = getAuth(app);
 
-// Clean Standard Google Auth Provider (100% compliant with Google standard verification; NO restricted Gmail scopes)
+// Configured Workspace Google Drive Scopes
+export const WORKSPACE_DRIVE_SCOPES = [
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.readonly',
+];
+
+// Google Auth Provider configured with Workspace Drive Scopes
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
+WORKSPACE_DRIVE_SCOPES.forEach((scope) => {
+  googleProvider.addScope(scope);
+});
 
-// Dedicated Workspace Google Auth Provider (ONLY used for on-demand Drive exports)
+// Dedicated Workspace Google Auth Provider (used for on-demand Drive exports & browsing)
 export const workspaceDriveProvider = new GoogleAuthProvider();
-workspaceDriveProvider.addScope('https://www.googleapis.com/auth/drive.file');
+WORKSPACE_DRIVE_SCOPES.forEach((scope) => {
+  workspaceDriveProvider.addScope(scope);
+});
+workspaceDriveProvider.setCustomParameters({
+  prompt: 'select_account',
+});
 
 // In-memory token storage (DO NOT store in localStorage or sessionStorage)
 let cachedAccessToken: string | null = null;
@@ -270,6 +283,28 @@ export const googleSignIn = async (): Promise<{
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.warn('Standard Google popup error:', error?.code || error);
+    throw error;
+  } finally {
+    isSigningIn = false;
+  }
+};
+
+// Explicit Drive Scope Consent Request (used when standard session lacks Drive scopes or on 403)
+export const requestDriveAccessToken = async (): Promise<{
+  user: User;
+  accessToken: string;
+} | null> => {
+  try {
+    isSigningIn = true;
+    const result = await signInWithPopup(auth, workspaceDriveProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (!credential?.accessToken) {
+      throw new Error('Google Drive access was not granted. Please sign in again and accept the Drive permissions prompt.');
+    }
+    cachedAccessToken = credential.accessToken;
+    return { user: result.user, accessToken: cachedAccessToken };
+  } catch (error: any) {
+    console.warn('Google Drive authorization popup error:', error?.code || error);
     throw error;
   } finally {
     isSigningIn = false;

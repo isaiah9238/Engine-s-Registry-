@@ -1290,6 +1290,152 @@ export function resolveBridge(source: string, target: string): SynthesisDomainBr
 }`
       }
     }, null, 2)
+  },
+  {
+    id: 'skill-manager',
+    name: 'skill_manager',
+    title: 'SkillManager',
+    description: 'Core orchestration and lifecycle controller for the Agent Engine. Dynamically registers SKILL.md manifests into the Cloud Firestore Primary DB, queries the active capability catalog, and computes dependency graphs and runtime usage telemetry insights.',
+    category: 'meta-engineering',
+    version: '1.0.0',
+    authorId: 'system-agent-engine',
+    authorEmail: 'isaiah9238@gmail.com',
+    status: 'verified',
+    isPublic: true,
+    securityClearance: 'internal',
+    isExecutable: true,
+    runtime: 'in_process',
+    sourceReferences: [
+      'https://agent-engine.ai.studio/docs/skill-manager',
+      'notebook://studio-alchemist/skill-lifecycle-orchestrator.ipynb'
+    ],
+    parameters: JSON.stringify([
+      {
+        name: 'action',
+        type: 'string',
+        required: true,
+        description: 'Operation to perform: register_skill, list_skills, or get_skill_insights.'
+      },
+      {
+        name: 'skillMarkdown',
+        type: 'string',
+        required: false,
+        description: 'Raw SKILL.md markdown text containing frontmatter and body for register_skill.'
+      },
+      {
+        name: 'filterCategory',
+        type: 'string',
+        required: false,
+        description: 'Category filter for list_skills (e.g., orchestration, security-audit).'
+      },
+      {
+        name: 'filterStatus',
+        type: 'string',
+        required: false,
+        description: 'Status filter for list_skills (verified, published, draft).'
+      },
+      {
+        name: 'includeTelemetry',
+        type: 'boolean',
+        required: false,
+        description: 'Whether to return execution latency histograms and error stats for get_skill_insights.'
+      }
+    ], null, 2),
+    returns: JSON.stringify({
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', description: 'Whether the management operation succeeded.' },
+        skillId: { type: 'string', description: 'Identifier of the registered skill if applicable.' },
+        skills: { type: 'array', items: { type: 'object' }, description: 'List of matching skills for list_skills.' },
+        insights: { type: 'object', description: 'Telemetry and dependency analytics for get_skill_insights.' }
+      },
+      required: ['success']
+    }, null, 2),
+    examples: JSON.stringify([
+      {
+        title: 'Registering New Skill Specification',
+        scenario: 'Autonomous agent dynamically generates a new skill and publishes it to the registry.',
+        prompt: 'Register the attached sanitize-sql.SKILL.md file into the Agent Engine primary database.',
+        invocations: 'register_skill(skillMarkdown: "...")',
+        expectedOutcome: 'Returns success: true with skillId and embedded 768-D vector dimensions.'
+      },
+      {
+        title: 'Querying Available Orchestration Skills',
+        scenario: 'Agent team lead queries available skills for autonomous sub-delegation.',
+        prompt: 'List all verified in-process skills in the orchestration category.',
+        invocations: 'list_skills(category: "orchestration", status: "verified")',
+        expectedOutcome: 'Returns matching skill records and their parameters.'
+      },
+      {
+        title: 'Evaluating Registry Performance & Dependencies',
+        scenario: 'Developer inspects execution metrics and dependency trees across skills.',
+        prompt: 'Provide telemetry insights and dependency health for all registered skills.',
+        invocations: 'get_skill_insights(includeTelemetry: true)',
+        expectedOutcome: 'Returns total invocation volume, average latency, and package requirements.'
+      }
+    ], null, 2),
+    references: JSON.stringify([
+      { title: 'Agent Engine Ingestion Specification', url: 'https://agent-engine.ai.studio/docs' },
+      { title: 'SKILL.md Meta-Architecture Reference', url: 'https://agent-engine.ai.studio/docs/skill-md' }
+    ], null, 2),
+    summaryJson: JSON.stringify({
+      name: 'skill_manager',
+      title: 'SkillManager',
+      category: 'meta-engineering',
+      version: '1.0.0',
+      description: 'Core orchestration and lifecycle controller for the Agent Engine. Dynamically registers SKILL.md manifests into the Cloud Firestore Primary DB, queries the active capability catalog, and computes dependency graphs and runtime usage telemetry insights.',
+      capabilities: ['register_skill', 'list_skills', 'get_skill_insights']
+    }, null, 2),
+    dependencies: JSON.stringify(['firebase-admin', '@google/genai', 'js-yaml'], null, 2),
+    codeFiles: JSON.stringify({
+      'skill_manager.ts': {
+        filename: 'skill_manager.ts',
+        language: 'typescript',
+        description: 'SkillManager execution runtime controller.',
+        content: `export interface SkillManagerParams {
+  action: 'register_skill' | 'list_skills' | 'get_skill_insights';
+  skillMarkdown?: string;
+  filterCategory?: string;
+  filterStatus?: string;
+  includeTelemetry?: boolean;
+}
+
+export async function executeSkillManager(params: SkillManagerParams) {
+  console.log('SkillManager executing action:', params.action);
+  return { success: true, timestamp: Date.now(), action: params.action };
+}`
+      }
+    }, null, 2),
+    createdAt: new Date('2026-10-29T00:00:00Z').toISOString(),
+    updatedAt: new Date('2026-10-29T09:15:00Z').toISOString(),
+    skillMarkdown: `---
+name: skill_manager
+title: SkillManager
+version: 1.0.0
+category: meta-engineering
+securityClearance: internal
+isExecutable: true
+runtime: in_process
+sourceReferences:
+  - "https://agent-engine.ai.studio/docs/skill-manager"
+  - "notebook://studio-alchemist/skill-lifecycle-orchestrator.ipynb"
+description: |
+  Core orchestration and lifecycle controller for the Agent Engine. Dynamically registers SKILL.md manifests into the Cloud Firestore Primary DB, queries the active capability catalog, and computes dependency graphs and runtime usage telemetry insights.
+dependencies: ["firebase-admin", "@google/genai", "js-yaml"]
+priority: 1
+thermodynamicFootprint: low
+---
+
+# SkillManager
+
+## Description & Mission
+The **SkillManager** is the central management and meta-orchestration capability of the Agent Engine. It empowers autonomous agents and developers to programmatically register new capability manifests (taking a standard SKILL.md markdown file as input), discover registered skills across domains, and inspect deep telemetry insights.
+
+## Parameters
+- \`action\`: Operation to perform (register_skill, list_skills, get_skill_insights)
+- \`skillMarkdown\`: Raw SKILL.md content for registration
+- \`filterCategory\`: Optional category filter
+- \`includeTelemetry\`: Include latency and invocation volume analytics`
   }
 ];
 

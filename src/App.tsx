@@ -28,6 +28,7 @@ import {
   Check,
   ExternalLink,
   X,
+  FileUp,
 } from 'lucide-react';
 import type { SkillRecord, SkillStatus } from './types/skill';
 import {
@@ -267,11 +268,19 @@ export default function App() {
 
   // Filter skills
   const filteredSkills = skills.filter((skill) => {
+    if (!skill) return false;
+    const sQuery = (searchQuery || '').toLowerCase().trim();
+    const title = (skill.title || '').toLowerCase();
+    const name = (skill.name || '').toLowerCase();
+    const desc = (skill.description || '').toLowerCase();
+    const cat = (skill.category || '').toLowerCase();
+
     const matchesSearch =
-      skill.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      skill.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      skill.category.toLowerCase().includes(searchQuery.toLowerCase());
+      !sQuery ||
+      title.includes(sQuery) ||
+      name.includes(sQuery) ||
+      desc.includes(sQuery) ||
+      cat.includes(sQuery);
 
     const matchesCategory =
       selectedCategory === 'All' || skill.category === selectedCategory;
@@ -657,6 +666,19 @@ export default function App() {
               >
                 <Plus className="w-4 h-4" />
                 <span>Author Skill</span>
+              </button>
+
+              {/* Action: Import File (.md / .json) */}
+              <button
+                onClick={() => {
+                  setEditingSkill(null);
+                  setIsEditorOpen(true);
+                }}
+                className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                title="Import local SKILL.md or JSON manifest file"
+              >
+                <FileUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Import File</span>
               </button>
             </div>
           </div>

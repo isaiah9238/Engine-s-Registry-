@@ -113,11 +113,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   SKILL.md
                 </span>
                 <span
-                  className="hidden xl:inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                  title="Protected by Firebase App Check & Dave's reCAPTCHA v3"
+                  className="hidden xl:inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                  title="Primary Hot Registry: Cloud Firestore database (ai-studio-cf7d8c68-3d56-4be3-9582-2d8d0481bcfc) with 768-D vector embeddings"
                 >
-                  <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span>App Check</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <Database className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>Firestore Primary DB</span>
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hidden sm:block truncate">
@@ -189,14 +190,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="xl:hidden">Matcher</span>
             </button>
 
-            {/* Drive Browser Button */}
+            {/* Drive Cold Archive Browser Button */}
             <button
               onClick={onOpenDriveBrowser}
               className="flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 text-xs lg:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-lg transition-all cursor-pointer"
-              title="Browse Google Drive skill packages"
+              title="Cold Archive: Browse exported skill backups in Google Drive"
             >
               <HardDrive className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="hidden lg:inline">Drive Cloud</span>
+              <span className="hidden lg:inline">Cold Archive</span>
             </button>
 
             {/* Gemini Chat Copilot Button */}

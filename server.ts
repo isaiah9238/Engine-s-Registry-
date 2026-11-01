@@ -112,7 +112,22 @@ initFirebaseAdmin();
 
 async function startServer() {
   const app = express();
-  const port = 3000;
+
+  const args = process.argv;
+  const portArgIndex = args.indexOf('--port');
+  const hostArgIndex = args.indexOf('--host');
+
+  const port = parseInt(
+    (portArgIndex !== -1 && args[portArgIndex + 1]) ||
+    process.env.PORT ||
+    '3000',
+    10
+  );
+
+  const host =
+    (hostArgIndex !== -1 && args[hostArgIndex + 1]) ||
+    process.env.HOST ||
+    '0.0.0.0';
 
   app.use(express.json({ limit: '10mb' }));
 
@@ -396,9 +411,23 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
     });
   });
 
-  // Bind port 3000 immediately so pre-warming and health checks succeed without waiting for Vite initialization
-  app.listen(port, '0.0.0.0', () => {
-    console.log(`Agent Engine Full-Stack Server listening on http://0.0.0.0:${port}`);
+  // Bind port immediately so pre-warming and health checks succeed
+  const server = app.listen(port, host, () => {
+    console.log(`Agent Engine Full-Stack Server listening on http://${host}:${port}`);
+  });
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`[Server] Port ${port} is currently busy, waiting for release...`);
+      setTimeout(() => {
+        try {
+          server.close();
+          server.listen(port, host);
+        } catch {}
+      }, 1000);
+    } else {
+      console.error('[Server] Listen error:', err);
+    }
   });
 
   // Mount Vite middlewares in development or serve static in production
@@ -409,7 +438,7 @@ ${context ? `Studio Active Context:\n${JSON.stringify(context, null, 2)}` : ''}`
     });
   } else {
     const vitePromise = createViteServer({
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: false, ws: false, watch: null },
       appType: 'spa',
     });
 

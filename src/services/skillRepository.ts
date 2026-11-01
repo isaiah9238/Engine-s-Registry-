@@ -18,6 +18,38 @@ import { SEED_SKILLS } from '../data/seedSkills';
 
 const SKILLS_COLLECTION = 'skills';
 
+export function normalizeSkillRecord(raw: any): SkillRecord {
+  const id = String(raw?.id || `skill-${Math.random().toString(36).substring(2, 9)}`);
+  const name = String(raw?.name || id || 'unnamed_skill').trim();
+  const title = String(raw?.title || name || 'Untitled Skill').trim();
+  const description = String(raw?.description || '').trim();
+  const category = String(raw?.category || 'orchestration').trim();
+  const version = String(raw?.version || '1.0.0').trim();
+
+  return {
+    ...raw,
+    id,
+    name,
+    title,
+    description,
+    category,
+    version,
+    status: raw?.status || 'draft',
+    isPublic: raw?.isPublic ?? true,
+    authorId: raw?.authorId || 'system-agent-engine',
+    authorEmail: raw?.authorEmail || 'isaiah9238@gmail.com',
+    isExecutable: raw?.isExecutable ?? true,
+    runtime: raw?.runtime || 'in_process',
+    skillMarkdown: typeof raw?.skillMarkdown === 'string' ? raw.skillMarkdown : '',
+    summaryJson: typeof raw?.summaryJson === 'string' ? raw.summaryJson : '{}',
+    parameters: typeof raw?.parameters === 'string' ? raw.parameters : '[]',
+    examples: typeof raw?.examples === 'string' ? raw.examples : '[]',
+    references: typeof raw?.references === 'string' ? raw.references : '[]',
+    dependencies: typeof raw?.dependencies === 'string' ? raw.dependencies : '[]',
+    codeFiles: typeof raw?.codeFiles === 'string' ? raw.codeFiles : '{}',
+  };
+}
+
 export async function fetchAllSkills(): Promise<SkillRecord[]> {
   try {
     const res = await fetch('/api/skills');
@@ -25,8 +57,13 @@ export async function fetchAllSkills(): Promise<SkillRecord[]> {
       const data = await res.json();
       if (data.skills && Array.isArray(data.skills)) {
         const mergedMap = new Map<string, SkillRecord>();
-        SEED_SKILLS.forEach((s) => mergedMap.set(s.id, s));
-        data.skills.forEach((s: SkillRecord) => mergedMap.set(s.id, s));
+        SEED_SKILLS.forEach((s) => mergedMap.set(s.id, normalizeSkillRecord(s)));
+        data.skills.forEach((s: any) => {
+          if (s) {
+            const norm = normalizeSkillRecord(s);
+            mergedMap.set(norm.id, norm);
+          }
+        });
         return Array.from(mergedMap.values());
       }
     }
@@ -35,7 +72,7 @@ export async function fetchAllSkills(): Promise<SkillRecord[]> {
   }
 
   if (!auth.currentUser) {
-    return SEED_SKILLS;
+    return SEED_SKILLS.map(normalizeSkillRecord);
   }
 
   try {
@@ -43,22 +80,25 @@ export async function fetchAllSkills(): Promise<SkillRecord[]> {
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      return SEED_SKILLS;
+      return SEED_SKILLS.map(normalizeSkillRecord);
     }
 
     const firestoreSkills: SkillRecord[] = [];
     snapshot.forEach((docSnap) => {
-      firestoreSkills.push(docSnap.data() as SkillRecord);
+      const data = docSnap.data();
+      if (data) {
+        firestoreSkills.push(normalizeSkillRecord(data));
+      }
     });
 
     const mergedMap = new Map<string, SkillRecord>();
-    SEED_SKILLS.forEach((s) => mergedMap.set(s.id, s));
+    SEED_SKILLS.forEach((s) => mergedMap.set(s.id, normalizeSkillRecord(s)));
     firestoreSkills.forEach((s) => mergedMap.set(s.id, s));
 
     return Array.from(mergedMap.values());
   } catch (error) {
     console.warn('Firestore fetch failed, using fallback in-memory seed skills:', error);
-    return SEED_SKILLS;
+    return SEED_SKILLS.map(normalizeSkillRecord);
   }
 }
 
@@ -83,11 +123,14 @@ export function subscribeToSkills(
         }
         const list: SkillRecord[] = [];
         snapshot.forEach((docSnap) => {
-          list.push(docSnap.data() as SkillRecord);
+          const data = docSnap.data();
+          if (data) {
+            list.push(normalizeSkillRecord(data));
+          }
         });
 
         const mergedMap = new Map<string, SkillRecord>();
-        SEED_SKILLS.forEach((s) => mergedMap.set(s.id, s));
+        SEED_SKILLS.forEach((s) => mergedMap.set(s.id, normalizeSkillRecord(s)));
         list.forEach((s) => mergedMap.set(s.id, s));
 
         onUpdate(Array.from(mergedMap.values()));
@@ -106,16 +149,24 @@ export function subscribeToSkills(
 }
 
 export async function saveSkill(skill: SkillRecord): Promise<void> {
-  const path = `${SKILLS_COLLECTION}/${skill.id}`;
   const cleanName = (skill.name || skill.id || 'unnamed-skill')
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, '-');
   const cleanId = (skill.id || cleanName).replace(/[^a-zA-Z0-9_-]/g, '-');
+  const path = `${SKILLS_COLLECTION}/${cleanId}`;
 
   const rawSkill: Record<string, any> = {
     ...skill,
     id: cleanId,
     name: cleanName,
+    title: skill.title || skill.name || cleanName,
+    description: skill.description || '',
+    category: skill.category || 'orchestration',
+    version: skill.version || '1.0.0',
+    status: skill.status || 'draft',
+    isPublic: skill.isPublic ?? true,
+    isExecutable: skill.isExecutable ?? true,
+    runtime: skill.runtime || 'in_process',
     authorId: skill.authorId || auth.currentUser?.uid || 'isaiah9238@gmail.com',
     authorEmail: skill.authorEmail || auth.currentUser?.email || 'isaiah9238@gmail.com',
     updatedAt: new Date().toISOString(),
@@ -183,43 +234,54 @@ export async function deleteSkill(skillId: string): Promise<void> {
  * Evaluates which skill in the registry is best for a given user query or job.
  */
 export function evaluateBestSkillForJob(query: string, skills: SkillRecord[]): SkillMatchResult[] {
-  if (!query || !query.trim()) return [];
+  if (!query || !query.trim() || !Array.isArray(skills)) return [];
 
-  const lowerQuery = query.toLowerCase();
+  const lowerQuery = String(query).toLowerCase();
   const queryTokens = lowerQuery
     .replace(/[^a-z0-9\s-]/g, ' ')
     .split(/\s+/)
     .filter((w) => w.length > 2);
 
-  const results: SkillMatchResult[] = skills.map((skill) => {
+  const validSkills = skills.filter((s): s is SkillRecord => Boolean(s && typeof s === 'object'));
+
+  const results: SkillMatchResult[] = validSkills.map((skill) => {
     let score = 0;
     const reasons: string[] = [];
 
+    const skillName = String(skill.name || skill.id || '').trim();
+    const skillTitle = String(skill.title || skill.name || skill.id || 'Untitled Skill').trim();
+    const skillDescription = String(skill.description || '').trim();
+
     let summary: IngestionSummaryJson | null = null;
-    try {
-      summary = JSON.parse(skill.summaryJson);
-    } catch {
-      // ignore
+    if (skill.summaryJson) {
+      try {
+        summary = typeof skill.summaryJson === 'string' ? JSON.parse(skill.summaryJson) : (skill.summaryJson as any);
+      } catch {
+        // ignore malformed summary json
+      }
     }
 
     // 1. Exact Name/Title Hit
-    if (lowerQuery.includes(skill.name.toLowerCase())) {
+    if (skillName && lowerQuery.includes(skillName.toLowerCase())) {
       score += 45;
-      reasons.push(`Direct mention of skill name: '${skill.name}' (+45)`);
+      reasons.push(`Direct mention of skill name: '${skillName}' (+45)`);
     }
 
-    const titleTokens = skill.title.toLowerCase().split(/\s+/);
-    const titleOverlap = titleTokens.filter((t) => queryTokens.includes(t));
-    if (titleOverlap.length > 0) {
-      score += Math.min(30, titleOverlap.length * 10);
-      reasons.push(`Matches key title terms: [${titleOverlap.join(', ')}]`);
+    if (skillTitle) {
+      const titleTokens = skillTitle.toLowerCase().split(/\s+/).filter(Boolean);
+      const titleOverlap = titleTokens.filter((t) => queryTokens.includes(t));
+      if (titleOverlap.length > 0) {
+        score += Math.min(30, titleOverlap.length * 10);
+        reasons.push(`Matches key title terms: [${titleOverlap.join(', ')}]`);
+      }
     }
 
     // 2. Routing Keywords from Summary JSON
-    if (summary?.routingKeywords) {
-      const keywordHits = summary.routingKeywords.filter((kw) =>
-        lowerQuery.includes(kw.toLowerCase())
-      );
+    if (summary?.routingKeywords && Array.isArray(summary.routingKeywords)) {
+      const keywordHits = summary.routingKeywords.filter((kw) => {
+        if (!kw || typeof kw !== 'string') return false;
+        return lowerQuery.includes(kw.toLowerCase());
+      });
       if (keywordHits.length > 0) {
         score += Math.min(35, keywordHits.length * 12);
         reasons.push(`Ingestion routing keywords triggered: [${keywordHits.join(', ')}]`);
@@ -227,8 +289,9 @@ export function evaluateBestSkillForJob(query: string, skills: SkillRecord[]): S
     }
 
     // 3. Trigger Preconditions Hit
-    if (summary?.triggerPreconditions) {
+    if (summary?.triggerPreconditions && Array.isArray(summary.triggerPreconditions)) {
       for (const pre of summary.triggerPreconditions) {
+        if (!pre || typeof pre !== 'string') continue;
         const preWords = pre.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
         const overlap = preWords.filter((w) => queryTokens.includes(w));
         if (overlap.length >= 2) {
@@ -240,15 +303,18 @@ export function evaluateBestSkillForJob(query: string, skills: SkillRecord[]): S
     }
 
     // 4. Description Semantic Density
-    const descWords = skill.description.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-    const descHits = descWords.filter((w) => queryTokens.includes(w));
-    if (descHits.length > 0) {
-      score += Math.min(15, descHits.length * 3);
+    if (skillDescription) {
+      const descWords = skillDescription.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+      const descHits = descWords.filter((w) => queryTokens.includes(w));
+      if (descHits.length > 0) {
+        score += Math.min(15, descHits.length * 3);
+      }
     }
 
     // 5. Check if query matches "unsuitedFor"
-    if (summary?.unsuitedFor) {
+    if (summary?.unsuitedFor && Array.isArray(summary.unsuitedFor)) {
       for (const un of summary.unsuitedFor) {
+        if (!un || typeof un !== 'string') continue;
         const unWords = un.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
         const unOverlap = unWords.filter((w) => queryTokens.includes(w));
         if (unOverlap.length >= 2) {
@@ -273,9 +339,9 @@ export function evaluateBestSkillForJob(query: string, skills: SkillRecord[]): S
         : `Low relevance. Task requires alternative capabilities.`;
 
     return {
-      skillId: skill.id,
-      skillName: skill.name,
-      skillTitle: skill.title,
+      skillId: skill.id || skillName || 'unknown-skill',
+      skillName: skillName,
+      skillTitle: skillTitle,
       score: clampedScore,
       confidence,
       reasons: reasons.length > 0 ? reasons : ['Baseline semantic scan without specific keyword matches.'],

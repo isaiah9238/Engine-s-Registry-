@@ -60,6 +60,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       hmr: false,
+      ws: false,
       watch: null,
     },
   };
