@@ -17,6 +17,9 @@ import {
   FileCode,
   Layers,
   ChevronDown,
+  CreditCard,
+  AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import type { SkillRecord } from '../types/skill';
 
@@ -80,6 +83,11 @@ What kind of agent skill would you like to build today?`,
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [copiedBlockId, setCopiedBlockId] = useState<string | null>(null);
+  const [billingAlert, setBillingAlert] = useState<{
+    message: string;
+    actionUrl: string;
+    advice?: string;
+  } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -156,12 +164,30 @@ What kind of agent skill would you like to build today?`,
         }),
       });
 
+      let replyText = 'No response returned from Gemini.';
+      let isBilling = false;
+      let billDetails: any = null;
+
       if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        isBilling = errorData?.isBillingError || response.status === 403;
+        replyText = errorData?.reply || `⚠️ Gemini API Notice: ${errorData?.message || errorData?.error || 'Service unavailable'}. Please verify your API key in Settings > Secrets or check AI Studio Billing.`;
+        billDetails = errorData?.billingDetails;
+      } else {
+        const data = await response.json();
+        replyText = data.reply || 'No response returned from Gemini.';
+        isBilling = Boolean(data.isBillingError);
+        billDetails = data.billingDetails;
       }
 
-      const data = await response.json();
-      const replyText = data.reply || 'No response returned from Gemini.';
+      if (isBilling) {
+        setBillingAlert(billDetails || {
+          message: 'Your Google Cloud billing account has an outstanding balance.',
+          actionUrl: 'https://aistudio.google.com/billing',
+          advice: 'Restore service by making a payment at https://aistudio.google.com/billing or select an active API key in Settings > Secrets.',
+        });
+      }
+
       const codeBlocks = extractCodeBlocks(replyText);
 
       const botMessage: ChatMessage = {
@@ -174,11 +200,11 @@ What kind of agent skill would you like to build today?`,
 
       setMessages((prev) => [...prev, botMessage]);
     } catch (err: any) {
-      console.error('Gemini chat error:', err);
+      console.warn('Gemini chat warning:', err);
       const errorMessage: ChatMessage = {
         id: `err-${Date.now()}`,
         role: 'model',
-        content: `⚠️ Failed to get a response from Gemini: ${err?.message || 'Network error'}. Please verify server connection and try again.`,
+        content: `⚠️ Gemini Assistant Notice: Could not connect to API server. Please check your network connection and try again.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -286,6 +312,39 @@ What kind of agent skill would you like to build today?`,
                 <span className="truncate">Context: <strong>{activeSkill.title}</strong> ({activeSkill.category})</span>
               </span>
               <span className="text-[10px] font-mono text-indigo-400 shrink-0">Attached</span>
+            </div>
+          )}
+
+          {/* Billing Alert Notification Banner */}
+          {billingAlert && (
+            <div className="p-3 bg-amber-950/40 border-b border-amber-600/30 text-amber-200 text-xs flex items-start gap-2.5">
+              <CreditCard className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-1">
+                <div className="font-semibold text-amber-300 flex items-center justify-between">
+                  <span>Google Cloud Billing Account Notice</span>
+                  <button
+                    onClick={() => setBillingAlert(null)}
+                    className="text-amber-400 hover:text-amber-200 p-0.5 rounded cursor-pointer"
+                    title="Dismiss"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                  {billingAlert.message} The assistant is running in offline architecture mode. To restore live Gemini model processing, update payment at AI Studio Billing or select an active key in <strong>Settings &gt; Secrets</strong>.
+                </p>
+                <div className="pt-1 flex items-center gap-2">
+                  <a
+                    href={billingAlert.actionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded text-[10px] font-medium border border-amber-500/40 transition-colors"
+                  >
+                    <span>AI Studio Billing</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
             </div>
           )}
 
